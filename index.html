@@ -6,6 +6,7 @@
     <title>Вгадай Слово</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -18,7 +19,7 @@
             border-radius: 20px;
             padding: 30px;
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-            transition: all 0.3s ease;
+            transition: all 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
             width: 100%;
             max-width: 420px;
         }
@@ -30,6 +31,11 @@
             transition: all 0.3s ease;
             cursor: pointer;
             text-align: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+        .btn:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
         }
         .btn-primary {
             background-color: #4f46e5;
@@ -59,14 +65,35 @@
             word-break: break-word;
             hyphens: auto;
         }
+        .hidden-screen {
+            opacity: 0;
+            transform: scale(0.95);
+            pointer-events: none;
+            position: absolute;
+            width: 100%;
+        }
+        .visible-screen {
+            opacity: 1;
+            transform: scale(1);
+            pointer-events: auto;
+            position: static;
+        }
+        @keyframes pop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+        .pop-animation {
+            animation: pop 0.3s ease-out;
+        }
     </style>
 </head>
 <body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
 
-    <div id="main-container" class="w-full max-w-md mx-auto">
+    <div id="main-container" class="w-full max-w-md mx-auto relative">
 
         <!-- Start Screen -->
-        <div id="start-screen" class="card text-center">
+        <div id="start-screen" class="card text-center visible-screen">
             <h1 class="text-4xl font-bold text-gray-800 mb-4">Вгадай Слово</h1>
             <p class="text-gray-600 mb-6">
                 Гра для двох гравців. По черзі описуйте слова та відгадуйте їх, щоб заробити бали.
@@ -85,35 +112,8 @@
             <button id="share-button" class="btn w-full text-lg mt-3 bg-green-500 text-white hover:bg-green-600">🚀 Поділитися грою</button>
         </div>
 
-        <!-- Donate Screen -->
-        <div id="donate-screen" class="card hidden">
-            <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Підтримка розробника</h2>
-            <p class="text-gray-600 text-center mb-6">Ваш донат допоможе мені підтримувати та покращувати гру. Платежі приймаються в криптовалюті (USDT). Дякую!</p>
-            <div class="space-y-3">
-                <button class="donate-btn btn btn-secondary w-full" data-amount="2">Підтримати на 2 USDT</button>
-                <button class="donate-btn btn btn-secondary w-full" data-amount="5">Підтримати на 5 USDT</button>
-                <button class="donate-btn btn btn-secondary w-full" data-amount="10">Підтримати на 10 USDT</button>
-            </div>
-            <button id="back-from-donate" class="btn btn-primary w-full mt-6">Назад</button>
-        </div>
-
-        <!-- Settings Screen -->
-        <div id="settings-screen" class="card hidden"></div>
-
-        <!-- Game Screen -->
-        <div id="game-screen" class="card hidden"></div>
-
-        <!-- Round Summary Screen -->
-        <div id="summary-screen" class="card hidden"></div>
-
-        <!-- Round End Screen -->
-        <div id="round-end-screen" class="card text-center hidden"></div>
-
-        <!-- Final End Screen -->
-        <div id="end-screen" class="card text-center hidden"></div>
-        
-        <!-- History Screen -->
-        <div id="history-screen" class="card hidden"></div>
+        <!-- Container for other screens -->
+        <div id="screen-container"></div>
 
     </div>
     
@@ -123,47 +123,65 @@
             const tg = window.Telegram.WebApp;
             tg.ready();
 
-            const screens = {
-                start: document.getElementById('start-screen'),
-                settings: document.getElementById('settings-screen'),
-                game: document.getElementById('game-screen'),
-                summary: document.getElementById('summary-screen'),
-                roundEnd: document.getElementById('round-end-screen'),
-                end: document.getElementById('end-screen'),
-                history: document.getElementById('history-screen'),
-                donate: document.getElementById('donate-screen')
-            };
-
+            const startScreen = document.getElementById('start-screen');
+            const screenContainer = document.getElementById('screen-container');
+            
             const startButton = document.getElementById('start-button');
             const historyButton = document.getElementById('history-button');
             const settingsButton = document.getElementById('settings-button');
             const shareButton = document.getElementById('share-button');
             const dictionarySelect = document.getElementById('dictionary-select');
             const donateScreenBtn = document.getElementById('donate-screen-btn');
-            const backFromDonateBtn = document.getElementById('back-from-donate');
-            
+
             let roundDuration = 60;
             let timerInterval;
             let words = [], availableWords = [], guessedWordsThisRound = [], skippedWordsThisRound = [];
-            let player1Score = 0, player2Score = 0, currentRound = 0;
+            let player1Score = 0, player2Score = 0, currentRound = 0, currentStreak = 0;
             const totalRounds = 2;
+            const STREAK_BONUS_THRESHOLD = 3;
 
-            function showScreen(screen) {
-                Object.values(screens).forEach(s => s.classList.add('hidden'));
-                screen.classList.remove('hidden');
+            // --- Sound Effects ---
+            const synth = new Tone.Synth().toDestination();
+            const sounds = {
+                correct: () => synth.triggerAttackRelease("C5", "8n", Tone.now()),
+                skip: () => synth.triggerAttackRelease("A3", "8n", Tone.now()),
+                click: () => new Tone.MembraneSynth().toDestination().triggerAttackRelease("C2", "8n", Tone.now()),
+                endRound: () => synth.triggerAttackRelease("G5", "4n", Tone.now()),
+                streak: () => new Tone.PolySynth(Tone.Synth).toDestination().triggerAttackRelease(["C5", "E5", "G5"], "8n")
+            };
+
+            function showScreen(htmlContent) {
+                startScreen.classList.remove('visible-screen');
+                startScreen.classList.add('hidden-screen');
+                screenContainer.innerHTML = htmlContent;
+                setTimeout(() => {
+                    const newScreen = screenContainer.firstChild;
+                    if(newScreen) {
+                        newScreen.classList.remove('hidden-screen');
+                        newScreen.classList.add('visible-screen');
+                    }
+                }, 50);
             }
 
-            // --- PAYMENTS LOGIC ---
+            function backToStart() {
+                sounds.click();
+                const currentScreen = screenContainer.firstChild;
+                if(currentScreen) {
+                    currentScreen.classList.remove('visible-screen');
+                    currentScreen.classList.add('hidden-screen');
+                }
+                startScreen.classList.remove('hidden-screen');
+                startScreen.classList.add('visible-screen');
+                setTimeout(() => screenContainer.innerHTML = '', 500);
+            }
+            
             function sendInvoice(amount) {
-                const PAYMENT_PROVIDER_TOKEN = '5775769170:LIVE:TG_1oguw1YT13ms_s3AuCVLtWgA'; 
-
+                const PAYMENT_PROVIDER_TOKEN = '5775769170:LIVE:TG_1oguw1YT13ms_s3AuCVLtWgA';
                 if (!PAYMENT_PROVIDER_TOKEN || PAYMENT_PROVIDER_TOKEN === 'YOUR_PROVIDER_TOKEN') {
                     tg.showAlert('Функція донатів ще не налаштована розробником.');
                     return;
                 }
-                
                 const amountInSmallestUnits = amount * 1000000;
-
                 const invoice = {
                     title: 'Донат на розвиток гри',
                     description: 'Ваша підтримка дуже важлива для мене!',
@@ -172,17 +190,9 @@
                     currency: 'USDT',
                     prices: [{ label: `Донат ${amount} USDT`, amount: amountInSmallestUnits }]
                 };
-                
-                // ДІАГНОСТИЧНЕ ПОВІДОМЛЕННЯ
-                tg.showAlert(`Спроба створити рахунок на ${amount} USDT. Зараз має відкритися вікно оплати.`);
-
                 tg.openInvoice(invoice, (status) => {
-                    if (status === 'paid') {
-                        tg.showAlert('Дякую за вашу підтримку! ❤️');
-                        tg.close();
-                    } else if (status === 'failed') {
-                        tg.showAlert('На жаль, платіж не вдався. Спробуйте ще раз.');
-                    }
+                    if (status === 'paid') { tg.showAlert('Дякую за вашу підтримку! ❤️'); tg.close(); } 
+                    else if (status === 'failed') { tg.showAlert('На жаль, платіж не вдався. Спробуйте ще раз.'); }
                 });
             }
             
@@ -200,55 +210,75 @@
                     dictionarySelect.appendChild(option);
                 }
             }
-            function resetAndExit() { clearInterval(timerInterval); showScreen(screens.start); }
+
             function startGame() {
+                sounds.click();
                 const selectedCategory = dictionarySelect.value;
                 if (selectedCategory === "Змішаний") words = Object.values(wordDictionaries).flat();
                 else words = [...wordDictionaries[selectedCategory]];
                 player1Score = 0; player2Score = 0; currentRound = 0;
                 startNextRound();
             }
+
             function startNextRound() {
                 currentRound++;
                 availableWords = [...words];
                 guessedWordsThisRound = [];
                 skippedWordsThisRound = [];
-                screens.game.innerHTML = `<div class="flex justify-between items-center mb-4"><h2 class="text-lg font-semibold text-gray-700">Раунд ${currentRound}</h2><button id="exit-game-btn" class="text-sm font-semibold text-indigo-600 hover:text-indigo-800">Вийти</button></div><div class="flex justify-between items-center mb-4"><div class="text-center w-1/3"><span class="text-sm text-gray-500">Гравець 1</span><p id="player1-score" class="text-3xl font-bold text-indigo-600">${player1Score}</p></div><div class="text-center w-1/3"><span class="text-sm text-gray-500">Час</span><p id="timer" class="text-3xl font-bold text-red-500">${roundDuration}</p></div><div class="text-center w-1/3"><span class="text-sm text-gray-500">Гравець 2</span><p id="player2-score" class="text-3xl font-bold text-teal-600">${player2Score}</p></div></div><div id="turn-indicator" class="text-center bg-gray-100 p-2 rounded-lg mb-6 text-gray-700 font-semibold"></div><div class="text-center my-6 p-6 bg-indigo-50 rounded-lg min-h-[120px] flex items-center justify-center"><h2 id="word-to-guess" class="text-3xl md:text-4xl font-bold text-gray-800 tracking-wider word-display">СЛОВО</h2></div><div class="mt-6"><div class="grid grid-cols-2 gap-4 mt-4"><button id="correct-button" class="btn btn-primary bg-green-500 hover:bg-green-600">Правильно!</button><button id="skip-button" class="btn btn-secondary">Пропустити</button></div></div>`;
-                showScreen(screens.game);
-                document.getElementById('exit-game-btn').addEventListener('click', resetAndExit);
+                currentStreak = 0;
+                
+                const gameHtml = `<div class="card hidden-screen" id="game-screen">
+                    <div class="flex justify-between items-center mb-4"><h2 class="text-lg font-semibold text-gray-700">Раунд ${currentRound}</h2><button id="exit-game-btn" class="text-sm font-semibold text-indigo-600 hover:text-indigo-800">Вийти</button></div>
+                    <div class="flex justify-between items-center mb-4"><div class="text-center w-1/3"><span class="text-sm text-gray-500">Гравець 1</span><p id="player1-score" class="text-3xl font-bold text-indigo-600 transition-transform">${player1Score}</p></div><div class="text-center w-1/3"><span class="text-sm text-gray-500">Час</span><p id="timer" class="text-3xl font-bold text-red-500">${roundDuration}</p></div><div class="text-center w-1/3"><span class="text-sm text-gray-500">Гравець 2</span><p id="player2-score" class="text-3xl font-bold text-teal-600 transition-transform">${player2Score}</p></div></div>
+                    <div id="turn-indicator" class="text-center bg-gray-100 p-2 rounded-lg mb-6 text-gray-700 font-semibold"></div>
+                    <div class="text-center my-6 p-6 bg-indigo-50 rounded-lg min-h-[120px] flex items-center justify-center"><h2 id="word-to-guess" class="text-3xl md:text-4xl font-bold text-gray-800 tracking-wider word-display">СЛОВО</h2></div>
+                    <div id="streak-indicator" class="text-center text-amber-500 font-bold h-6"></div>
+                    <div class="mt-2"><div class="grid grid-cols-2 gap-4 mt-4"><button id="correct-button" class="btn btn-primary bg-green-500 hover:bg-green-600">Правильно!</button><button id="skip-button" class="btn btn-secondary">Пропустити</button></div></div></div>`;
+                showScreen(gameHtml);
+                
+                document.getElementById('exit-game-btn').addEventListener('click', backToStart);
                 document.getElementById('correct-button').addEventListener('click', handleCorrectGuess);
                 document.getElementById('skip-button').addEventListener('click', handleSkip);
+
                 updateScores(); nextWord(); startTimer(); updateTurnIndicator();
             }
-            function updateTurnIndicator() {
-                const turnIndicator = document.getElementById('turn-indicator');
-                if (currentRound % 2 !== 0) turnIndicator.innerHTML = `<span>Описує: <b>Гравець 1</b></span> | <span>Відгадує: <b>Гравець 2</b></span>`;
-                else turnIndicator.innerHTML = `<span>Описує: <b>Гравець 2</b></span> | <span>Відгадує: <b>Гравець 1</b></span>`;
-            }
-            function nextWord() {
-                const wordToGuessDisplay = document.getElementById('word-to-guess');
-                if (availableWords.length === 0) { wordToGuessDisplay.textContent = "Слова скінчились!"; return; }
-                const randomIndex = Math.floor(Math.random() * availableWords.length);
-                wordToGuessDisplay.textContent = availableWords[randomIndex];
-                availableWords.splice(randomIndex, 1);
-            }
+            
             function handleCorrectGuess() {
+                sounds.correct();
+                currentStreak++;
                 const word = document.getElementById('word-to-guess').textContent;
                 if (word !== "Слова скінчились!") {
                     guessedWordsThisRound.push(word);
                     if (currentRound % 2 !== 0) player1Score++; else player2Score++;
+                    if(currentStreak > 0 && currentStreak % STREAK_BONUS_THRESHOLD === 0) {
+                        sounds.streak();
+                        if (currentRound % 2 !== 0) player1Score++; else player2Score++;
+                        const streakIndicator = document.getElementById('streak-indicator');
+                        streakIndicator.textContent = `Серія +1 бонус!`;
+                        setTimeout(() => streakIndicator.textContent = '', 1500);
+                    }
                 }
                 updateScores(); nextWord();
             }
+
             function handleSkip() {
+                sounds.skip();
+                currentStreak = 0;
                 const word = document.getElementById('word-to-guess').textContent;
                 if (word !== "Слова скінчились!") skippedWordsThisRound.push(word);
                 nextWord();
             }
+
             function updateScores() {
-                document.getElementById('player1-score').textContent = player1Score;
-                document.getElementById('player2-score').textContent = player2Score;
+                const p1 = document.getElementById('player1-score');
+                const p2 = document.getElementById('player2-score');
+                if(p1.textContent !== String(player1Score)) p1.classList.add('pop-animation');
+                if(p2.textContent !== String(player2Score)) p2.classList.add('pop-animation');
+                p1.textContent = player1Score;
+                p2.textContent = player2Score;
+                setTimeout(() => { p1.classList.remove('pop-animation'); p2.classList.remove('pop-animation'); }, 300);
             }
+
             function startTimer() {
                 let timer = roundDuration;
                 const timerDisplay = document.getElementById('timer');
@@ -257,35 +287,77 @@
                 timerInterval = setInterval(() => {
                     timer--;
                     timerDisplay.textContent = timer;
-                    if (timer <= 0) showRoundSummary();
+                    if (timer <= 0) {
+                        sounds.endRound();
+                        showRoundSummary();
+                    }
                 }, 1000);
             }
+            
+            // Other functions (updateTurnIndicator, nextWord, showRoundSummary, endRound, endGame, saveResult, showHistory, showSettings, shareBot) remain largely the same, but need to be included in the final script.
+            // I will now write the rest of the functions.
+            
+            function updateTurnIndicator() {
+                const turnIndicator = document.getElementById('turn-indicator');
+                if (currentRound % 2 !== 0) turnIndicator.innerHTML = `<span>Описує: <b>Гравець 1</b></span> | <span>Відгадує: <b>Гравець 2</b></span>`;
+                else turnIndicator.innerHTML = `<span>Описує: <b>Гравець 2</b></span> | <span>Відгадує: <b>Гравець 1</b></span>`;
+            }
+
+            function nextWord() {
+                const wordToGuessDisplay = document.getElementById('word-to-guess');
+                if (availableWords.length === 0) { wordToGuessDisplay.textContent = "Слова скінчились!"; return; }
+                const randomIndex = Math.floor(Math.random() * availableWords.length);
+                wordToGuessDisplay.textContent = availableWords[randomIndex];
+                availableWords.splice(randomIndex, 1);
+            }
+            
             function showRoundSummary() {
                 clearInterval(timerInterval);
                 let guessedHtml = guessedWordsThisRound.map(w => `<li class="text-green-600">${w}</li>`).join('') || '<li class="text-gray-400">Немає</li>';
                 let skippedHtml = skippedWordsThisRound.map(w => `<li class="text-red-500">${w}</li>`).join('') || '<li class="text-gray-400">Немає</li>';
-                screens.summary.innerHTML = `<h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Підсумки раунду ${currentRound}</h2><div class="grid grid-cols-2 gap-4"><div><h3 class="font-semibold mb-2">✅ Відгадано (${guessedWordsThisRound.length})</h3><ul class="space-y-1 text-sm max-h-40 overflow-y-auto">${guessedHtml}</ul></div><div><h3 class="font-semibold mb-2">❌ Пропущено (${skippedWordsThisRound.length})</h3><ul class="space-y-1 text-sm max-h-40 overflow-y-auto">${skippedHtml}</ul></div></div><button id="continue-from-summary-btn" class="btn btn-primary w-full text-lg mt-6">Далі</button>`;
-                showScreen(screens.summary);
-                document.getElementById('continue-from-summary-btn').addEventListener('click', endRound);
+                const summaryHtml = `<div class="card hidden-screen" id="summary-screen">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Підсумки раунду ${currentRound}</h2>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div><h3 class="font-semibold mb-2">✅ Відгадано (${guessedWordsThisRound.length})</h3><ul class="space-y-1 text-sm max-h-40 overflow-y-auto">${guessedHtml}</ul></div>
+                        <div><h3 class="font-semibold mb-2">❌ Пропущено (${skippedWordsThisRound.length})</h3><ul class="space-y-1 text-sm max-h-40 overflow-y-auto">${skippedHtml}</ul></div>
+                    </div>
+                    <button id="continue-from-summary-btn" class="btn btn-primary w-full text-lg mt-6">Далі</button></div>`;
+                showScreen(summaryHtml);
+                document.getElementById('continue-from-summary-btn').addEventListener('click', () => { sounds.click(); endRound(); });
             }
+
             function endRound() {
                 if (currentRound < totalRounds) {
-                    screens.roundEnd.innerHTML = `<h2 class="text-3xl font-bold text-gray-800 mb-2">Раунд завершено!</h2><p class="text-gray-600 mb-6">Поточний рахунок:</p><div class="flex justify-around items-center mb-8"><div class="text-center"><span class="text-lg text-gray-500">Гравець 1</span><p class="text-5xl font-bold text-indigo-600">${player1Score}</p></div><div class="text-center"><span class="text-lg text-gray-500">Гравець 2</span><p class="text-5xl font-bold text-teal-600">${player2Score}</p></div></div><p class="text-gray-600 mb-8">Далі описує Гравець ${currentRound === 1 ? 2 : 1}.</p><button id="next-round-button" class="btn btn-primary w-full text-lg">Наступний раунд</button><button id="reset-round-btn" class="btn btn-secondary w-full text-lg mt-3">Скинути і вийти</button>`;
-                    showScreen(screens.roundEnd);
-                    document.getElementById('next-round-button').addEventListener('click', startNextRound);
-                    document.getElementById('reset-round-btn').addEventListener('click', resetAndExit);
-                } else endGame();
+                    const roundEndHtml = `<div class="card text-center hidden-screen" id="round-end-screen">
+                        <h2 class="text-3xl font-bold text-gray-800 mb-2">Раунд завершено!</h2><p class="text-gray-600 mb-6">Поточний рахунок:</p>
+                        <div class="flex justify-around items-center mb-8"><div class="text-center"><span class="text-lg text-gray-500">Гравець 1</span><p class="text-5xl font-bold text-indigo-600">${player1Score}</p></div><div class="text-center"><span class="text-lg text-gray-500">Гравець 2</span><p class="text-5xl font-bold text-teal-600">${player2Score}</p></div></div>
+                        <p class="text-gray-600 mb-8">Далі описує Гравець ${currentRound === 1 ? 2 : 1}.</p>
+                        <button id="next-round-button" class="btn btn-primary w-full text-lg">Наступний раунд</button>
+                        <button id="reset-round-btn" class="btn btn-secondary w-full text-lg mt-3">Скинути і вийти</button></div>`;
+                    showScreen(roundEndHtml);
+                    document.getElementById('next-round-button').addEventListener('click', () => { sounds.click(); startNextRound(); });
+                    document.getElementById('reset-round-btn').addEventListener('click', backToStart);
+                } else {
+                    endGame();
+                }
             }
+
             function endGame() {
                 let winnerText = '';
                 if (player1Score > player2Score) winnerText = '🎉 Переміг Гравець 1! 🎉';
                 else if (player2Score > player1Score) winnerText = '🎉 Переміг Гравець 2! 🎉';
-                else winnerText = '🤝 Нічия! 🤝';
-                screens.end.innerHTML = `<h2 class="text-3xl font-bold text-gray-800 mb-2">Гру завершено!</h2><p class="text-2xl font-semibold ${player1Score > player2Score ? 'text-indigo-600' : (player2Score > player1Score ? 'text-teal-600' : 'text-gray-600')} mb-6">${winnerText}</p><p class="text-gray-600 mb-4">Фінальний рахунок:</p><div class="flex justify-around items-center mb-8"><div class="text-center"><span class="text-lg text-gray-500">Гравець 1</span><p class="text-5xl font-bold text-indigo-600">${player1Score}</p></div><div class="text-center"><span class="text-lg text-gray-500">Гравець 2</span><p class="text-5xl font-bold text-teal-600">${player2Score}</p></div></div><button id="restart-button" class="btn btn-primary w-full text-lg">Грати знову</button>`;
-                showScreen(screens.end);
-                document.getElementById('restart-button').addEventListener('click', () => showScreen(screens.start));
+                else winnerText = '🤝 Нічия! �';
+                const endHtml = `<div class="card text-center hidden-screen" id="end-screen">
+                    <h2 class="text-3xl font-bold text-gray-800 mb-2">Гру завершено!</h2>
+                    <p class="text-2xl font-semibold ${player1Score > player2Score ? 'text-indigo-600' : (player2Score > player1Score ? 'text-teal-600' : 'text-gray-600')} mb-6">${winnerText}</p>
+                    <p class="text-gray-600 mb-4">Фінальний рахунок:</p>
+                    <div class="flex justify-around items-center mb-8"><div class="text-center"><span class="text-lg text-gray-500">Гравець 1</span><p class="text-5xl font-bold text-indigo-600">${player1Score}</p></div><div class="text-center"><span class="text-lg text-gray-500">Гравець 2</span><p class="text-5xl font-bold text-teal-600">${player2Score}</p></div></div>
+                    <button id="restart-button" class="btn btn-primary w-full text-lg">Грати знову</button></div>`;
+                showScreen(endHtml);
+                document.getElementById('restart-button').addEventListener('click', backToStart);
                 saveResult(winnerText);
             }
+
             function saveResult(winnerText) {
                 const result = { date: new Date().toISOString(), p1Score: player1Score, p2Score: player2Score, winner: winnerText };
                 tg.CloudStorage.getItem('word_game_history', (err, value) => {
@@ -298,12 +370,17 @@
                     });
                 });
             }
+
             function showHistory() {
-                screens.history.innerHTML = `<div class="flex justify-between items-center mb-6"><h2 class="text-2xl font-bold text-gray-800">Історія ігор</h2><button id="close-history-button" class="text-gray-500 hover:text-gray-800 text-3xl leading-none">&times;</button></div><div id="history-list" class="space-y-3 max-h-96 overflow-y-auto"></div>`;
-                document.getElementById('close-history-button').addEventListener('click', () => showScreen(screens.start));
+                sounds.click();
+                const historyHtml = `<div class="card hidden-screen" id="history-screen">
+                    <div class="flex justify-between items-center mb-6"><h2 class="text-2xl font-bold text-gray-800">Історія ігор</h2><button id="close-history-button" class="text-gray-500 hover:text-gray-800 text-3xl leading-none">&times;</button></div>
+                    <div id="history-list" class="space-y-3 max-h-96 overflow-y-auto"></div></div>`;
+                showScreen(historyHtml);
+                document.getElementById('close-history-button').addEventListener('click', backToStart);
                 const historyList = document.getElementById('history-list');
                 tg.CloudStorage.getItem('word_game_history', (err, value) => {
-                    if (err) { historyList.innerHTML = '<p class="text-red-500">Не вдалося завантажити історію.</p>'; showScreen(screens.history); return; }
+                    if (err) { historyList.innerHTML = '<p class="text-red-500">Не вдалося завантажити історію.</p>'; return; }
                     const history = value ? JSON.parse(value) : [];
                     if (history.length === 0) historyList.innerHTML = '<p class="text-gray-500 text-center">Історії ігор ще немає.</p>';
                     else {
@@ -315,21 +392,49 @@
                             historyList.appendChild(item);
                         });
                     }
-                    showScreen(screens.history);
                 });
             }
+
             function showSettings() {
-                screens.settings.innerHTML = `<h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Налаштування</h2><div class="mb-6"><label for="time-slider" class="block mb-2 text-sm font-medium text-gray-700">Час раунду: <span id="time-value" class="font-bold text-indigo-600">${roundDuration}</span> сек</label><input id="time-slider" type="range" min="30" max="120" value="${roundDuration}" step="15" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"></div><button id="save-settings-button" class="btn btn-primary w-full text-lg">Зберегти та повернутись</button>`;
-                showScreen(screens.settings);
+                sounds.click();
+                const settingsHtml = `<div class="card hidden-screen" id="settings-screen">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Налаштування</h2>
+                    <div class="mb-6"><label for="time-slider" class="block mb-2 text-sm font-medium text-gray-700">Час раунду: <span id="time-value" class="font-bold text-indigo-600">${roundDuration}</span> сек</label><input id="time-slider" type="range" min="30" max="120" value="${roundDuration}" step="15" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"></div>
+                    <button id="save-settings-button" class="btn btn-primary w-full text-lg">Зберегти та повернутись</button></div>`;
+                showScreen(settingsHtml);
                 const timeSlider = document.getElementById('time-slider');
                 const timeValue = document.getElementById('time-value');
                 timeSlider.addEventListener('input', (e) => { timeValue.textContent = e.target.value; });
                 document.getElementById('save-settings-button').addEventListener('click', () => {
                     roundDuration = parseInt(timeSlider.value, 10);
-                    showScreen(screens.start);
+                    backToStart();
                 });
             }
+
+            function showDonate() {
+                sounds.click();
+                const donateHtml = `<div class="card hidden-screen" id="donate-screen">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Підтримка розробника</h2>
+                    <p class="text-gray-600 text-center mb-6">Ваш донат допоможе мені підтримувати та покращувати гру. Платежі приймаються в криптовалюті (USDT). Дякую!</p>
+                    <div class="space-y-3">
+                        <button class="donate-btn btn btn-secondary w-full" data-amount="2">Підтримати на 2 USDT</button>
+                        <button class="donate-btn btn btn-secondary w-full" data-amount="5">Підтримати на 5 USDT</button>
+                        <button class="donate-btn btn btn-secondary w-full" data-amount="10">Підтримати на 10 USDT</button>
+                    </div>
+                    <button id="back-from-donate" class="btn btn-primary w-full mt-6">Назад</button></div>`;
+                showScreen(donateHtml);
+                document.getElementById('back-from-donate').addEventListener('click', backToStart);
+                document.querySelectorAll('.donate-btn').forEach(button => {
+                    button.addEventListener('click', () => {
+                        sounds.click();
+                        const amount = parseInt(button.dataset.amount, 10);
+                        sendInvoice(amount);
+                    });
+                });
+            }
+
             function shareBot() {
+                sounds.click();
                 const botUsername = "word_game_ua_bot";
                 const shareText = "Привіт! Запрошую тебе зіграти у захоплюючу гру 'Вгадай Слово' прямо в Telegram!";
                 const urlToShare = `https://t.me/${botUsername}`;
@@ -342,15 +447,9 @@
             historyButton.addEventListener('click', showHistory);
             settingsButton.addEventListener('click', showSettings);
             shareButton.addEventListener('click', shareBot);
-            donateScreenBtn.addEventListener('click', () => showScreen(screens.donate));
-            backFromDonateBtn.addEventListener('click', () => showScreen(screens.start));
-            document.querySelectorAll('.donate-btn').forEach(button => {
-                button.addEventListener('click', () => {
-                    const amount = parseInt(button.dataset.amount, 10);
-                    sendInvoice(amount);
-                });
-            });
+            donateScreenBtn.addEventListener('click', showDonate);
         });
     </script>
 </body>
 </html>
+�
