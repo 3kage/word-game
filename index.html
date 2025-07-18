@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вгадай Слово</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Montserrat', sans-serif;
+        }
+        .card {
+            background-color: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            width: 100%;
+            max-width: 420px;
+        }
+        .btn {
+            display: inline-block;
+            font-weight: 600;
+            padding: 12px 30px;
+            border-radius: 50px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            text-align: center;
+        }
+        .btn-primary {
+            background-color: #4f46e5;
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #4338ca;
+        }
+        .btn-secondary {
+            background-color: #e5e7eb;
+            color: #374151;
+        }
+        .btn-secondary:hover {
+            background-color: #d1d5db;
+        }
+        select {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%234B5563%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E');
+            background-repeat: no-repeat;
+            background-position: right 1rem center;
+            background-size: 0.65em auto;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+
+    <div id="main-container" class="w-full max-w-md mx-auto">
+
+        <!-- Start Screen -->
+        <div id="start-screen" class="card text-center">
+            <h1 class="text-4xl font-bold text-gray-800 mb-4">Вгадай Слово</h1>
+            <p class="text-gray-600 mb-6">
+                Гра для двох гравців. По черзі описуйте слова та відгадуйте їх, щоб заробити бали.
+            </p>
+            <div class="mb-8">
+                <label for="dictionary-select" class="block mb-2 text-sm font-medium text-gray-700">Оберіть категорію слів:</label>
+                <select id="dictionary-select" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5">
+                    <!-- Options will be populated by JS -->
+                </select>
+            </div>
+            <button id="start-button" class="btn btn-primary w-full text-lg">Почати гру</button>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="game-screen" class="card hidden">
+            <div class="flex justify-between items-center mb-4">
+                <div class="text-center">
+                    <span class="text-sm text-gray-500">Гравець 1</span>
+                    <p id="player1-score" class="text-3xl font-bold text-indigo-600">0</p>
+                </div>
+                <div class="text-center">
+                     <span class="text-sm text-gray-500">Час</span>
+                    <p id="timer" class="text-3xl font-bold text-red-500">60</p>
+                </div>
+                <div class="text-center">
+                    <span class="text-sm text-gray-500">Гравець 2</span>
+                    <p id="player2-score" class="text-3xl font-bold text-teal-600">0</p>
+                </div>
+            </div>
+            
+            <div id="turn-indicator" class="text-center bg-gray-100 p-2 rounded-lg mb-6 text-gray-700 font-semibold">
+                <!-- Turn info goes here -->
+            </div>
+
+            <div class="text-center my-6 p-6 bg-indigo-50 rounded-lg">
+                <p class="text-gray-500 mb-2">Слово для опису:</p>
+                <h2 id="word-to-guess" class="text-5xl font-bold text-gray-800 tracking-wider">СЛОВО</h2>
+            </div>
+            
+            <div class="mt-6">
+                 <div class="grid grid-cols-2 gap-4 mt-4">
+                    <button id="correct-button" class="btn btn-primary bg-green-500 hover:bg-green-600">Правильно!</button>
+                    <button id="skip-button" class="btn btn-secondary">Пропустити</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Round End Screen -->
+        <div id="round-end-screen" class="card text-center hidden">
+            <h2 class="text-3xl font-bold text-gray-800 mb-2">Раунд завершено!</h2>
+            <p class="text-gray-600 mb-6">Поточний рахунок:</p>
+            <div class="flex justify-around items-center mb-8">
+                <div class="text-center">
+                    <span class="text-lg text-gray-500">Гравець 1</span>
+                    <p id="round-end-score1" class="text-5xl font-bold text-indigo-600">0</p>
+                </div>
+                <div class="text-center">
+                    <span class="text-lg text-gray-500">Гравець 2</span>
+                    <p id="round-end-score2" class="text-5xl font-bold text-teal-600">0</p>
+                </div>
+            </div>
+            <p id="next-turn-info" class="text-gray-600 mb-8"></p>
+            <button id="next-round-button" class="btn btn-primary w-full text-lg">Почати наступний раунд</button>
+        </div>
+
+
+        <!-- Final End Screen -->
+        <div id="end-screen" class="card text-center hidden">
+            <h2 class="text-3xl font-bold text-gray-800 mb-2">Гру завершено!</h2>
+            <p id="winner-info" class="text-2xl font-semibold text-green-600 mb-6"></p>
+            <p class="text-gray-600 mb-4">Фінальний рахунок:</p>
+            <div class="flex justify-around items-center mb-8">
+                <div class="text-center">
+                    <span class="text-lg text-gray-500">Гравець 1</span>
+                    <p id="final-score1" class="text-5xl font-bold text-indigo-600">0</p>
+                </div>
+                <div class="text-center">
+                    <span class="text-lg text-gray-500">Гравець 2</span>
+                    <p id="final-score2" class="text-5xl font-bold text-teal-600">0</p>
+                </div>
+            </div>
+            <button id="restart-button" class="btn btn-primary w-full text-lg">Грати знову</button>
+        </div>
+
+    </div>
+    
+    <script>
+        // --- Word Dictionaries ---
+        const wordDictionaries = {
+          "Загальний": [
+            'Сонце', 'Книга', 'Комп\'ютер', 'Вода', 'Дерево', 'Міст', 'Телефон', 'Музика', 'Картина', 'Подорож',
+            'Хмара', 'Квітка', 'Годинник', 'Ключ', 'Дорога', 'Літак', 'Велосипед', 'Гітара', 'Океан', 'Гора',
+            'Зірка', 'М\'яч', 'Стіл', 'Вікно', 'Річка', 'Шоколад', 'Кава', 'Мрія', 'Сміх', 'Дружба', 'Любов',
+            'Щастя', 'Родина', 'Робота', 'Свято', 'Літо', 'Зима', 'Весна', 'Осінь', 'Вокзал', 'Театр', 'Кіно'
+          ],
+          "Технології": [
+            'Смартфон', 'Ноутбук', 'Програміст', 'Інтернет', 'Алгоритм', 'База даних', 'Сервер', 'Дрон', 'Робот',
+            'Віртуальність', 'Блокчейн', 'Процесор', 'Клавіатура', 'Монітор', 'Штучний інтелект', 'Мережа'
+          ],
+          "Природа": [
+            'Водоспад', 'Пустеля', 'Вулкан', 'Льодовик', 'Джунглі', 'Савана', 'Скеля', 'Світанок', 'Захід сонця',
+            'Сузір\'я', 'Комета', 'Атмосфера', 'Екосистема', 'Торнадо', 'Озеро', 'Поляна'
+          ],
+          "Їжа та напої": [
+            'Піца', 'Суші', 'Борщ', 'Вареники', 'Круасан', 'Еспресо', 'Лимонад', 'Смузі', 'Паста', 'Стейк',
+            'Салат', 'Морозиво', 'Тірамісу', 'Коктейль', 'Сирник', 'Млинець'
+          ]
+        };
+
+        // --- DOM Elements ---
+        const startScreen = document.getElementById('start-screen');
+        const gameScreen = document.getElementById('game-screen');
+        const roundEndScreen = document.getElementById('round-end-screen');
+        const endScreen = document.getElementById('end-screen');
+
+        const startButton = document.getElementById('start-button');
+        const correctButton = document.getElementById('correct-button');
+        const skipButton = document.getElementById('skip-button');
+        const nextRoundButton = document.getElementById('next-round-button');
+        const restartButton = document.getElementById('restart-button');
+
+        const player1ScoreDisplay = document.getElementById('player1-score');
+        const player2ScoreDisplay = document.getElementById('player2-score');
+        const timerDisplay = document.getElementById('timer');
+        const turnIndicator = document.getElementById('turn-indicator');
+        const wordToGuessDisplay = document.getElementById('word-to-guess');
+        
+        const roundEndScore1 = document.getElementById('round-end-score1');
+        const roundEndScore2 = document.getElementById('round-end-score2');
+        const nextTurnInfo = document.getElementById('next-turn-info');
+
+        const finalScore1 = document.getElementById('final-score1');
+        const finalScore2 = document.getElementById('final-score2');
+        const winnerInfo = document.getElementById('winner-info');
+        
+        const dictionarySelect = document.getElementById('dictionary-select');
+        
+        // --- Game State ---
+        let words = []; // Will be populated from selected dictionary
+        let availableWords = [];
+        let player1Score = 0;
+        let player2Score = 0;
+        let currentRound = 0;
+        const totalRounds = 2;
+        let timer = 60;
+        let timerInterval;
+        let currentWord = '';
+
+        // --- Initialization ---
+        function populateDictionaries() {
+            for (const category in wordDictionaries) {
+                const option = document.createElement('option');
+                option.value = category;
+                option.textContent = category;
+                dictionarySelect.appendChild(option);
+            }
+        }
+
+        // --- Game Logic ---
+        function startGame() {
+            // Get selected dictionary
+            const selectedCategory = dictionarySelect.value;
+            words = [...wordDictionaries[selectedCategory]];
+            
+            player1Score = 0;
+            player2Score = 0;
+            currentRound = 0;
+            startScreen.classList.add('hidden');
+            endScreen.classList.add('hidden');
+            roundEndScreen.classList.add('hidden');
+            startNextRound();
+        }
+
+        function startNextRound() {
+            currentRound++;
+            availableWords = [...words];
+            
+            roundEndScreen.classList.add('hidden');
+            gameScreen.classList.remove('hidden');
+
+            updateScores();
+            nextWord();
+            startTimer();
+            updateTurnIndicator();
+        }
+
+        function updateTurnIndicator() {
+            if (currentRound % 2 !== 0) { // Round 1
+                turnIndicator.innerHTML = `<span>Описує: <b>Гравець 1</b></span> | <span>Відгадує: <b>Гравець 2</b></span>`;
+            } else { // Round 2
+                turnIndicator.innerHTML = `<span>Описує: <b>Гравець 2</b></span> | <span>Відгадує: <b>Гравець 1</b></span>`;
+            }
+        }
+
+        function nextWord() {
+            if (availableWords.length === 0) {
+                // If all words are used, show a message or end round
+                wordToGuessDisplay.textContent = "Слова скінчились!";
+                return;
+            }
+            const randomIndex = Math.floor(Math.random() * availableWords.length);
+            currentWord = availableWords[randomIndex];
+            availableWords.splice(randomIndex, 1);
+            wordToGuessDisplay.textContent = currentWord;
+        }
+        
+        function handleCorrectGuess() {
+            if (currentRound % 2 !== 0) { // Player 1's turn to describe
+                player1Score++;
+            } else { // Player 2's turn to describe
+                player2Score++;
+            }
+            updateScores();
+            nextWord();
+        }
+
+        function updateScores() {
+            player1ScoreDisplay.textContent = player1Score;
+            player2ScoreDisplay.textContent = player2Score;
+        }
+
+        function startTimer() {
+            timer = 60;
+            timerDisplay.textContent = timer;
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                timer--;
+                timerDisplay.textContent = timer;
+                if (timer <= 0) {
+                    endRound();
+                }
+            }, 1000);
+        }
+
+        function endRound() {
+            clearInterval(timerInterval);
+            gameScreen.classList.add('hidden');
+            
+            if (currentRound < totalRounds) {
+                // Show intermediate round screen
+                roundEndScore1.textContent = player1Score;
+                roundEndScore2.textContent = player2Score;
+                const nextPlayer = (currentRound % 2 !== 0) ? 2 : 1;
+                nextTurnInfo.textContent = `Далі описує Гравець ${nextPlayer}.`;
+                roundEndScreen.classList.remove('hidden');
+            } else {
+                // Show final end screen
+                endGame();
+            }
+        }
+
+        function endGame() {
+            finalScore1.textContent = player1Score;
+            finalScore2.textContent = player2Score;
+
+            if (player1Score > player2Score) {
+                winnerInfo.textContent = '🎉 Переміг Гравець 1! 🎉';
+                winnerInfo.className = 'text-2xl font-semibold text-indigo-600 mb-6';
+            } else if (player2Score > player1Score) {
+                winnerInfo.textContent = '🎉 Переміг Гравець 2! 🎉';
+                 winnerInfo.className = 'text-2xl font-semibold text-teal-600 mb-6';
+            } else {
+                winnerInfo.textContent = '🤝 Нічия! 🤝';
+                 winnerInfo.className = 'text-2xl font-semibold text-gray-600 mb-6';
+            }
+            
+            startScreen.classList.add('hidden');
+            gameScreen.classList.add('hidden');
+            roundEndScreen.classList.add('hidden');
+            endScreen.classList.remove('hidden');
+        }
+
+        // --- Event Listeners ---
+        document.addEventListener('DOMContentLoaded', populateDictionaries);
+        startButton.addEventListener('click', startGame);
+        restartButton.addEventListener('click', () => {
+             endScreen.classList.add('hidden');
+             startScreen.classList.remove('hidden');
+        });
+        nextRoundButton.addEventListener('click', startNextRound);
+        correctButton.addEventListener('click', handleCorrectGuess);
+        skipButton.addEventListener('click', nextWord);
+
+    </script>
+</body>
+</html>
