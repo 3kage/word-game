@@ -162,7 +162,6 @@
                     return;
                 }
                 
-                // Ammer Pay працює з USDT. Сума передається в найменших одиницях (1 USDT = 1,000,000 одиниць)
                 const amountInSmallestUnits = amount * 1000000;
 
                 const invoice = {
@@ -170,10 +169,13 @@
                     description: 'Ваша підтримка дуже важлива для мене!',
                     payload: `donate-wordgame-${Date.now()}-${amount}`,
                     provider_token: PAYMENT_PROVIDER_TOKEN,
-                    currency: 'USDT', // Змінено на USDT
+                    currency: 'USDT',
                     prices: [{ label: `Донат ${amount} USDT`, amount: amountInSmallestUnits }]
                 };
                 
+                // ДІАГНОСТИЧНЕ ПОВІДОМЛЕННЯ
+                tg.showAlert(`Спроба створити рахунок на ${amount} USDT. Зараз має відкритися вікно оплати.`);
+
                 tg.openInvoice(invoice, (status) => {
                     if (status === 'paid') {
                         tg.showAlert('Дякую за вашу підтримку! ❤️');
