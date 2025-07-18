@@ -5,9 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Вгадай Слово</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Montserrat', sans-serif;
@@ -68,81 +69,36 @@
             <div class="mb-8">
                 <label for="dictionary-select" class="block mb-2 text-sm font-medium text-gray-700">Оберіть категорію слів:</label>
                 <select id="dictionary-select" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5">
-                    <!-- Options will be populated by JS -->
                 </select>
             </div>
             <button id="start-button" class="btn btn-primary w-full text-lg">Почати гру</button>
+            <button id="history-button" class="btn btn-secondary w-full text-lg mt-3">Історія ігор</button>
         </div>
 
         <!-- Game Screen -->
         <div id="game-screen" class="card hidden">
-            <div class="flex justify-between items-center mb-4">
-                <div class="text-center">
-                    <span class="text-sm text-gray-500">Гравець 1</span>
-                    <p id="player1-score" class="text-3xl font-bold text-indigo-600">0</p>
-                </div>
-                <div class="text-center">
-                     <span class="text-sm text-gray-500">Час</span>
-                    <p id="timer" class="text-3xl font-bold text-red-500">60</p>
-                </div>
-                <div class="text-center">
-                    <span class="text-sm text-gray-500">Гравець 2</span>
-                    <p id="player2-score" class="text-3xl font-bold text-teal-600">0</p>
-                </div>
-            </div>
-            
-            <div id="turn-indicator" class="text-center bg-gray-100 p-2 rounded-lg mb-6 text-gray-700 font-semibold">
-                <!-- Turn info goes here -->
-            </div>
-
-            <div class="text-center my-6 p-6 bg-indigo-50 rounded-lg">
-                <p class="text-gray-500 mb-2">Слово для опису:</p>
-                <h2 id="word-to-guess" class="text-5xl font-bold text-gray-800 tracking-wider">СЛОВО</h2>
-            </div>
-            
-            <div class="mt-6">
-                 <div class="grid grid-cols-2 gap-4 mt-4">
-                    <button id="correct-button" class="btn btn-primary bg-green-500 hover:bg-green-600">Правильно!</button>
-                    <button id="skip-button" class="btn btn-secondary">Пропустити</button>
-                </div>
-            </div>
+            <!-- Game content remains the same -->
         </div>
 
         <!-- Round End Screen -->
         <div id="round-end-screen" class="card text-center hidden">
-            <h2 class="text-3xl font-bold text-gray-800 mb-2">Раунд завершено!</h2>
-            <p class="text-gray-600 mb-6">Поточний рахунок:</p>
-            <div class="flex justify-around items-center mb-8">
-                <div class="text-center">
-                    <span class="text-lg text-gray-500">Гравець 1</span>
-                    <p id="round-end-score1" class="text-5xl font-bold text-indigo-600">0</p>
-                </div>
-                <div class="text-center">
-                    <span class="text-lg text-gray-500">Гравець 2</span>
-                    <p id="round-end-score2" class="text-5xl font-bold text-teal-600">0</p>
-                </div>
-            </div>
-            <p id="next-turn-info" class="text-gray-600 mb-8"></p>
-            <button id="next-round-button" class="btn btn-primary w-full text-lg">Почати наступний раунд</button>
+            <!-- Round end content remains the same -->
         </div>
-
 
         <!-- Final End Screen -->
         <div id="end-screen" class="card text-center hidden">
-            <h2 class="text-3xl font-bold text-gray-800 mb-2">Гру завершено!</h2>
-            <p id="winner-info" class="text-2xl font-semibold text-green-600 mb-6"></p>
-            <p class="text-gray-600 mb-4">Фінальний рахунок:</p>
-            <div class="flex justify-around items-center mb-8">
-                <div class="text-center">
-                    <span class="text-lg text-gray-500">Гравець 1</span>
-                    <p id="final-score1" class="text-5xl font-bold text-indigo-600">0</p>
-                </div>
-                <div class="text-center">
-                    <span class="text-lg text-gray-500">Гравець 2</span>
-                    <p id="final-score2" class="text-5xl font-bold text-teal-600">0</p>
-                </div>
+            <!-- Final score content remains the same -->
+        </div>
+        
+        <!-- History Screen -->
+        <div id="history-screen" class="card hidden">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">Історія ігор</h2>
+                <button id="close-history-button" class="text-gray-500 hover:text-gray-800">&times;</button>
             </div>
-            <button id="restart-button" class="btn btn-primary w-full text-lg">Грати знову</button>
+            <div id="history-list" class="space-y-3 max-h-96 overflow-y-auto">
+                <!-- History items will be populated here -->
+            </div>
         </div>
 
     </div>
@@ -170,180 +126,266 @@
           ]
         };
 
-        // --- DOM Elements ---
-        const startScreen = document.getElementById('start-screen');
-        const gameScreen = document.getElementById('game-screen');
-        const roundEndScreen = document.getElementById('round-end-screen');
-        const endScreen = document.getElementById('end-screen');
+        document.addEventListener('DOMContentLoaded', () => {
+            const tg = window.Telegram.WebApp;
+            tg.ready();
 
-        const startButton = document.getElementById('start-button');
-        const correctButton = document.getElementById('correct-button');
-        const skipButton = document.getElementById('skip-button');
-        const nextRoundButton = document.getElementById('next-round-button');
-        const restartButton = document.getElementById('restart-button');
+            const startScreen = document.getElementById('start-screen');
+            const gameScreen = document.getElementById('game-screen');
+            const roundEndScreen = document.getElementById('round-end-screen');
+            const endScreen = document.getElementById('end-screen');
+            const historyScreen = document.getElementById('history-screen');
 
-        const player1ScoreDisplay = document.getElementById('player1-score');
-        const player2ScoreDisplay = document.getElementById('player2-score');
-        const timerDisplay = document.getElementById('timer');
-        const turnIndicator = document.getElementById('turn-indicator');
-        const wordToGuessDisplay = document.getElementById('word-to-guess');
-        
-        const roundEndScore1 = document.getElementById('round-end-score1');
-        const roundEndScore2 = document.getElementById('round-end-score2');
-        const nextTurnInfo = document.getElementById('next-turn-info');
+            const startButton = document.getElementById('start-button');
+            const historyButton = document.getElementById('history-button');
+            const closeHistoryButton = document.getElementById('close-history-button');
+            const dictionarySelect = document.getElementById('dictionary-select');
+            const historyList = document.getElementById('history-list');
 
-        const finalScore1 = document.getElementById('final-score1');
-        const finalScore2 = document.getElementById('final-score2');
-        const winnerInfo = document.getElementById('winner-info');
-        
-        const dictionarySelect = document.getElementById('dictionary-select');
-        
-        // --- Game State ---
-        let words = []; // Will be populated from selected dictionary
-        let availableWords = [];
-        let player1Score = 0;
-        let player2Score = 0;
-        let currentRound = 0;
-        const totalRounds = 2;
-        let timer = 60;
-        let timerInterval;
-        let currentWord = '';
+            let words = [];
+            let availableWords = [];
+            let player1Score = 0;
+            let player2Score = 0;
+            let currentRound = 0;
+            const totalRounds = 2;
+            let timer = 60;
+            let timerInterval;
 
-        // --- Initialization ---
-        function populateDictionaries() {
-            for (const category in wordDictionaries) {
-                const option = document.createElement('option');
-                option.value = category;
-                option.textContent = category;
-                dictionarySelect.appendChild(option);
-            }
-        }
-
-        // --- Game Logic ---
-        function startGame() {
-            // Get selected dictionary
-            const selectedCategory = dictionarySelect.value;
-            words = [...wordDictionaries[selectedCategory]];
-            
-            player1Score = 0;
-            player2Score = 0;
-            currentRound = 0;
-            startScreen.classList.add('hidden');
-            endScreen.classList.add('hidden');
-            roundEndScreen.classList.add('hidden');
-            startNextRound();
-        }
-
-        function startNextRound() {
-            currentRound++;
-            availableWords = [...words];
-            
-            roundEndScreen.classList.add('hidden');
-            gameScreen.classList.remove('hidden');
-
-            updateScores();
-            nextWord();
-            startTimer();
-            updateTurnIndicator();
-        }
-
-        function updateTurnIndicator() {
-            if (currentRound % 2 !== 0) { // Round 1
-                turnIndicator.innerHTML = `<span>Описує: <b>Гравець 1</b></span> | <span>Відгадує: <b>Гравець 2</b></span>`;
-            } else { // Round 2
-                turnIndicator.innerHTML = `<span>Описує: <b>Гравець 2</b></span> | <span>Відгадує: <b>Гравець 1</b></span>`;
-            }
-        }
-
-        function nextWord() {
-            if (availableWords.length === 0) {
-                // If all words are used, show a message or end round
-                wordToGuessDisplay.textContent = "Слова скінчились!";
-                return;
-            }
-            const randomIndex = Math.floor(Math.random() * availableWords.length);
-            currentWord = availableWords[randomIndex];
-            availableWords.splice(randomIndex, 1);
-            wordToGuessDisplay.textContent = currentWord;
-        }
-        
-        function handleCorrectGuess() {
-            if (currentRound % 2 !== 0) { // Player 1's turn to describe
-                player1Score++;
-            } else { // Player 2's turn to describe
-                player2Score++;
-            }
-            updateScores();
-            nextWord();
-        }
-
-        function updateScores() {
-            player1ScoreDisplay.textContent = player1Score;
-            player2ScoreDisplay.textContent = player2Score;
-        }
-
-        function startTimer() {
-            timer = 60;
-            timerDisplay.textContent = timer;
-            clearInterval(timerInterval);
-            timerInterval = setInterval(() => {
-                timer--;
-                timerDisplay.textContent = timer;
-                if (timer <= 0) {
-                    endRound();
+            function populateDictionaries() {
+                for (const category in wordDictionaries) {
+                    const option = document.createElement('option');
+                    option.value = category;
+                    option.textContent = category;
+                    dictionarySelect.appendChild(option);
                 }
-            }, 1000);
-        }
-
-        function endRound() {
-            clearInterval(timerInterval);
-            gameScreen.classList.add('hidden');
-            
-            if (currentRound < totalRounds) {
-                // Show intermediate round screen
-                roundEndScore1.textContent = player1Score;
-                roundEndScore2.textContent = player2Score;
-                const nextPlayer = (currentRound % 2 !== 0) ? 2 : 1;
-                nextTurnInfo.textContent = `Далі описує Гравець ${nextPlayer}.`;
-                roundEndScreen.classList.remove('hidden');
-            } else {
-                // Show final end screen
-                endGame();
-            }
-        }
-
-        function endGame() {
-            finalScore1.textContent = player1Score;
-            finalScore2.textContent = player2Score;
-
-            if (player1Score > player2Score) {
-                winnerInfo.textContent = '🎉 Переміг Гравець 1! 🎉';
-                winnerInfo.className = 'text-2xl font-semibold text-indigo-600 mb-6';
-            } else if (player2Score > player1Score) {
-                winnerInfo.textContent = '🎉 Переміг Гравець 2! 🎉';
-                 winnerInfo.className = 'text-2xl font-semibold text-teal-600 mb-6';
-            } else {
-                winnerInfo.textContent = '🤝 Нічия! 🤝';
-                 winnerInfo.className = 'text-2xl font-semibold text-gray-600 mb-6';
             }
             
-            startScreen.classList.add('hidden');
-            gameScreen.classList.add('hidden');
-            roundEndScreen.classList.add('hidden');
-            endScreen.classList.remove('hidden');
-        }
+            function showScreen(screen) {
+                [startScreen, gameScreen, roundEndScreen, endScreen, historyScreen].forEach(s => s.classList.add('hidden'));
+                screen.classList.remove('hidden');
+            }
 
-        // --- Event Listeners ---
-        document.addEventListener('DOMContentLoaded', populateDictionaries);
-        startButton.addEventListener('click', startGame);
-        restartButton.addEventListener('click', () => {
-             endScreen.classList.add('hidden');
-             startScreen.classList.remove('hidden');
+            function startGame() {
+                const selectedCategory = dictionarySelect.value;
+                words = [...wordDictionaries[selectedCategory]];
+                player1Score = 0;
+                player2Score = 0;
+                currentRound = 0;
+                startNextRound();
+            }
+
+            function startNextRound() {
+                currentRound++;
+                availableWords = [...words];
+                
+                // Re-create game screen content
+                gameScreen.innerHTML = `
+                    <div class="flex justify-between items-center mb-4">
+                        <div class="text-center">
+                            <span class="text-sm text-gray-500">Гравець 1</span>
+                            <p id="player1-score" class="text-3xl font-bold text-indigo-600">${player1Score}</p>
+                        </div>
+                        <div class="text-center">
+                             <span class="text-sm text-gray-500">Час</span>
+                            <p id="timer" class="text-3xl font-bold text-red-500">60</p>
+                        </div>
+                        <div class="text-center">
+                            <span class="text-sm text-gray-500">Гравець 2</span>
+                            <p id="player2-score" class="text-3xl font-bold text-teal-600">${player2Score}</p>
+                        </div>
+                    </div>
+                    <div id="turn-indicator" class="text-center bg-gray-100 p-2 rounded-lg mb-6 text-gray-700 font-semibold"></div>
+                    <div class="text-center my-6 p-6 bg-indigo-50 rounded-lg">
+                        <p class="text-gray-500 mb-2">Слово для опису:</p>
+                        <h2 id="word-to-guess" class="text-5xl font-bold text-gray-800 tracking-wider">СЛОВО</h2>
+                    </div>
+                    <div class="mt-6">
+                         <div class="grid grid-cols-2 gap-4 mt-4">
+                            <button id="correct-button" class="btn btn-primary bg-green-500 hover:bg-green-600">Правильно!</button>
+                            <button id="skip-button" class="btn btn-secondary">Пропустити</button>
+                        </div>
+                    </div>`;
+
+                showScreen(gameScreen);
+                
+                document.getElementById('correct-button').addEventListener('click', handleCorrectGuess);
+                document.getElementById('skip-button').addEventListener('click', nextWord);
+
+                updateScores();
+                nextWord();
+                startTimer();
+                updateTurnIndicator();
+            }
+
+            function updateTurnIndicator() {
+                const turnIndicator = document.getElementById('turn-indicator');
+                if (currentRound % 2 !== 0) {
+                    turnIndicator.innerHTML = `<span>Описує: <b>Гравець 1</b></span> | <span>Відгадує: <b>Гравець 2</b></span>`;
+                } else {
+                    turnIndicator.innerHTML = `<span>Описує: <b>Гравець 2</b></span> | <span>Відгадує: <b>Гравець 1</b></span>`;
+                }
+            }
+
+            function nextWord() {
+                const wordToGuessDisplay = document.getElementById('word-to-guess');
+                if (availableWords.length === 0) {
+                    wordToGuessDisplay.textContent = "Слова скінчились!";
+                    return;
+                }
+                const randomIndex = Math.floor(Math.random() * availableWords.length);
+                wordToGuessDisplay.textContent = availableWords[randomIndex];
+                availableWords.splice(randomIndex, 1);
+            }
+            
+            function handleCorrectGuess() {
+                if (currentRound % 2 !== 0) {
+                    player1Score++;
+                } else {
+                    player2Score++;
+                }
+                updateScores();
+                nextWord();
+            }
+
+            function updateScores() {
+                document.getElementById('player1-score').textContent = player1Score;
+                document.getElementById('player2-score').textContent = player2Score;
+            }
+
+            function startTimer() {
+                timer = 60;
+                const timerDisplay = document.getElementById('timer');
+                timerDisplay.textContent = timer;
+                clearInterval(timerInterval);
+                timerInterval = setInterval(() => {
+                    timer--;
+                    timerDisplay.textContent = timer;
+                    if (timer <= 0) {
+                        endRound();
+                    }
+                }, 1000);
+            }
+
+            function endRound() {
+                clearInterval(timerInterval);
+                if (currentRound < totalRounds) {
+                    roundEndScreen.innerHTML = `
+                        <h2 class="text-3xl font-bold text-gray-800 mb-2">Раунд завершено!</h2>
+                        <p class="text-gray-600 mb-6">Поточний рахунок:</p>
+                        <div class="flex justify-around items-center mb-8">
+                            <div class="text-center">
+                                <span class="text-lg text-gray-500">Гравець 1</span>
+                                <p class="text-5xl font-bold text-indigo-600">${player1Score}</p>
+                            </div>
+                            <div class="text-center">
+                                <span class="text-lg text-gray-500">Гравець 2</span>
+                                <p class="text-5xl font-bold text-teal-600">${player2Score}</p>
+                            </div>
+                        </div>
+                        <p class="text-gray-600 mb-8">Далі описує Гравець ${currentRound === 1 ? 2 : 1}.</p>
+                        <button id="next-round-button" class="btn btn-primary w-full text-lg">Почати наступний раунд</button>`;
+                    showScreen(roundEndScreen);
+                    document.getElementById('next-round-button').addEventListener('click', startNextRound);
+                } else {
+                    endGame();
+                }
+            }
+
+            function endGame() {
+                let winnerText = '';
+                if (player1Score > player2Score) {
+                    winnerText = '🎉 Переміг Гравець 1! �';
+                } else if (player2Score > player1Score) {
+                    winnerText = '🎉 Переміг Гравець 2! 🎉';
+                } else {
+                    winnerText = '🤝 Нічия! 🤝';
+                }
+
+                endScreen.innerHTML = `
+                    <h2 class="text-3xl font-bold text-gray-800 mb-2">Гру завершено!</h2>
+                    <p class="text-2xl font-semibold ${player1Score > player2Score ? 'text-indigo-600' : (player2Score > player1Score ? 'text-teal-600' : 'text-gray-600')} mb-6">${winnerText}</p>
+                    <p class="text-gray-600 mb-4">Фінальний рахунок:</p>
+                    <div class="flex justify-around items-center mb-8">
+                        <div class="text-center">
+                            <span class="text-lg text-gray-500">Гравець 1</span>
+                            <p class="text-5xl font-bold text-indigo-600">${player1Score}</p>
+                        </div>
+                        <div class="text-center">
+                            <span class="text-lg text-gray-500">Гравець 2</span>
+                            <p class="text-5xl font-bold text-teal-600">${player2Score}</p>
+                        </div>
+                    </div>
+                    <button id="restart-button" class="btn btn-primary w-full text-lg">Грати знову</button>`;
+                showScreen(endScreen);
+                document.getElementById('restart-button').addEventListener('click', () => showScreen(startScreen));
+                
+                saveResult(winnerText);
+            }
+
+            function saveResult(winnerText) {
+                const result = {
+                    date: new Date().toISOString(),
+                    p1Score: player1Score,
+                    p2Score: player2Score,
+                    winner: winnerText
+                };
+
+                tg.CloudStorage.getItem('word_game_history', (err, value) => {
+                    if (err) {
+                        console.error('Error getting history:', err);
+                        return;
+                    }
+                    let history = value ? JSON.parse(value) : [];
+                    history.push(result);
+                    // Keep only the last 10 results
+                    if (history.length > 10) {
+                        history = history.slice(history.length - 10);
+                    }
+                    tg.CloudStorage.setItem('word_game_history', JSON.stringify(history), (err, success) => {
+                        if (err) {
+                            console.error('Error saving history:', err);
+                        }
+                    });
+                });
+            }
+
+            function showHistory() {
+                tg.CloudStorage.getItem('word_game_history', (err, value) => {
+                    if (err) {
+                        historyList.innerHTML = '<p class="text-red-500">Не вдалося завантажити історію.</p>';
+                        showScreen(historyScreen);
+                        return;
+                    }
+                    
+                    historyList.innerHTML = ''; // Clear previous list
+                    const history = value ? JSON.parse(value) : [];
+
+                    if (history.length === 0) {
+                        historyList.innerHTML = '<p class="text-gray-500 text-center">Історії ігор ще немає.</p>';
+                    } else {
+                        history.reverse().forEach(game => {
+                            const date = new Date(game.date).toLocaleString('uk-UA', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+                            const item = document.createElement('div');
+                            item.className = 'bg-gray-50 p-4 rounded-lg';
+                            item.innerHTML = `
+                                <p class="font-semibold text-gray-700">${game.winner}</p>
+                                <p class="text-sm text-gray-500">Рахунок: ${game.p1Score} - ${game.p2Score}</p>
+                                <p class="text-xs text-gray-400 mt-1">${date}</p>
+                            `;
+                            historyList.appendChild(item);
+                        });
+                    }
+                    showScreen(historyScreen);
+                });
+            }
+
+            // Event Listeners
+            populateDictionaries();
+            startButton.addEventListener('click', startGame);
+            historyButton.addEventListener('click', showHistory);
+            closeHistoryButton.addEventListener('click', () => showScreen(startScreen));
         });
-        nextRoundButton.addEventListener('click', startNextRound);
-        correctButton.addEventListener('click', handleCorrectGuess);
-        skipButton.addEventListener('click', nextWord);
-
     </script>
 </body>
 </html>
+�
