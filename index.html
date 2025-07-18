@@ -88,11 +88,11 @@
         <!-- Donate Screen -->
         <div id="donate-screen" class="card hidden">
             <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Підтримка розробника</h2>
-            <p class="text-gray-600 text-center mb-6">Ваш донат допоможе мені підтримувати та покращувати гру. Дякую!</p>
+            <p class="text-gray-600 text-center mb-6">Ваш донат допоможе мені підтримувати та покращувати гру. Платежі приймаються в криптовалюті (USDT). Дякую!</p>
             <div class="space-y-3">
-                <button class="donate-btn btn btn-secondary w-full" data-amount="50">Підтримати на 50 грн</button>
-                <button class="donate-btn btn btn-secondary w-full" data-amount="100">Підтримати на 100 грн</button>
-                <button class="donate-btn btn btn-secondary w-full" data-amount="200">Підтримати на 200 грн</button>
+                <button class="donate-btn btn btn-secondary w-full" data-amount="2">Підтримати на 2 USDT</button>
+                <button class="donate-btn btn btn-secondary w-full" data-amount="5">Підтримати на 5 USDT</button>
+                <button class="donate-btn btn btn-secondary w-full" data-amount="10">Підтримати на 10 USDT</button>
             </div>
             <button id="back-from-donate" class="btn btn-primary w-full mt-6">Назад</button>
         </div>
@@ -161,17 +161,19 @@
                     tg.showAlert('Функція донатів ще не налаштована розробником.');
                     return;
                 }
+                
+                // Ammer Pay працює з USDT. Сума передається в найменших одиницях (1 USDT = 1,000,000 одиниць)
+                const amountInSmallestUnits = amount * 1000000;
 
                 const invoice = {
                     title: 'Донат на розвиток гри',
                     description: 'Ваша підтримка дуже важлива для мене!',
-                    payload: `donate-wordgame-${Date.now()}`,
+                    payload: `donate-wordgame-${Date.now()}-${amount}`,
                     provider_token: PAYMENT_PROVIDER_TOKEN,
-                    currency: 'UAH',
-                    prices: [{ label: 'Донат', amount: amount * 100 }] // amount в копійках
+                    currency: 'USDT', // Змінено на USDT
+                    prices: [{ label: `Донат ${amount} USDT`, amount: amountInSmallestUnits }]
                 };
                 
-                // Telegram API для платежів
                 tg.openInvoice(invoice, (status) => {
                     if (status === 'paid') {
                         tg.showAlert('Дякую за вашу підтримку! ❤️');
