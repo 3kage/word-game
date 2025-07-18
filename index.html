@@ -78,6 +78,7 @@
             </div>
             <button id="start-button" class="btn btn-primary w-full text-lg">Почати гру</button>
             <button id="history-button" class="btn btn-secondary w-full text-lg mt-3">Історія ігор</button>
+            <button id="share-button" class="btn w-full text-lg mt-3 bg-green-500 text-white hover:bg-green-600">🚀 Поділитися грою</button>
         </div>
 
         <!-- Game Screen -->
@@ -111,7 +112,7 @@
     <!-- Підключення скриптів -->
     <script src="words.js"></script>
     <script>
-        window.onload = () => {
+        document.addEventListener('DOMContentLoaded', () => {
             const tg = window.Telegram.WebApp;
             tg.ready();
 
@@ -123,6 +124,7 @@
 
             const startButton = document.getElementById('start-button');
             const historyButton = document.getElementById('history-button');
+            const shareButton = document.getElementById('share-button');
             const closeHistoryButton = document.getElementById('close-history-button');
             const dictionarySelect = document.getElementById('dictionary-select');
             const historyList = document.getElementById('history-list');
@@ -137,6 +139,10 @@
             let timerInterval;
 
             function populateDictionaries() {
+                if (typeof wordDictionaries === 'undefined') {
+                    console.error("Словники не завантажено!");
+                    return;
+                }
                 dictionarySelect.innerHTML = '';
                 const mixedOption = document.createElement('option');
                 mixedOption.value = "Змішаний";
@@ -304,7 +310,7 @@
                 } else if (player2Score > player1Score) {
                     winnerText = '🎉 Переміг Гравець 2! 🎉';
                 } else {
-                    winnerText = '🤝 Нічия! �';
+                    winnerText = '🤝 Нічия! 🤝';
                 }
 
                 endScreen.innerHTML = `
@@ -383,14 +389,22 @@
                     showScreen(historyScreen);
                 });
             }
+            
+            function shareBot() {
+                const botUsername = "word_game_ua_bot";
+                const shareText = "Привіт! Запрошую тебе зіграти у захоплюючу гру 'Вгадай Слово' прямо в Telegram!";
+                const urlToShare = `https://t.me/${botUsername}`;
+                const telegramShareUrl = `https://t.me/share/url?url=${encodeURIComponent(urlToShare)}&text=${encodeURIComponent(shareText)}`;
+                tg.openTelegramLink(telegramShareUrl);
+            }
 
             // Event Listeners
             populateDictionaries();
             startButton.addEventListener('click', startGame);
             historyButton.addEventListener('click', showHistory);
+            shareButton.addEventListener('click', shareBot);
             closeHistoryButton.addEventListener('click', () => showScreen(startScreen));
-        };
+        });
     </script>
 </body>
 </html>
-�
