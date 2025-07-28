@@ -1226,6 +1226,8 @@ class WordGame {
             this.showError('Помилка видалення категорії: ' + error.message);
         }
     }
+
+    sendInvoice(amount) {
         try {
             const providerToken = GameConfig.PAYMENT.PROVIDER_TOKEN;
             
