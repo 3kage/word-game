@@ -1,10 +1,12 @@
 // Word Game - Main Game Logic
 class WordGame {
     constructor() {
-        this.tg = window.Telegram.WebApp;
+        this.tg = window.Telegram?.WebApp;
         this.settings = {
             roundDuration: GameConfig.DEFAULT_ROUND_DURATION,
-            soundEnabled: GameConfig.SOUNDS.ENABLED
+            soundEnabled: GameConfig.SOUNDS.ENABLED,
+            difficulty: 'NORMAL',
+            selectedCategory: 'Змішаний'
         };
         this.gameState = {
             words: [],
@@ -15,23 +17,44 @@ class WordGame {
             player2Score: 0,
             currentRound: 0,
             currentStreak: 0,
-            timerInterval: null
+            timerInterval: null,
+            isGameActive: false
         };
         this.synth = null;
         this.sounds = {};
+        this.userCategories = {};
         this.init();
     }
 
     async init() {
         try {
+            if (!this.tg) {
+                console.warn('Telegram WebApp not available, running in development mode');
+                this.tg = {
+                    ready: () => {},
+                    CloudStorage: {
+                        getItem: (key, callback) => callback(null, localStorage.getItem(key)),
+                        setItem: (key, value, callback) => {
+                            localStorage.setItem(key, value);
+                            callback(null, true);
+                        }
+                    },
+                    showAlert: (message) => alert(message),
+                    openInvoice: () => console.log('Invoice functionality not available'),
+                    openTelegramLink: (url) => window.open(url, '_blank'),
+                    close: () => window.close()
+                };
+            }
+            
             this.tg.ready();
             await this.initializeSounds();
             await this.loadSettings();
+            await this.loadUserCategories();
             this.setupEventListeners();
             await this.populateDictionaries();
             this.showLoadingComplete();
         } catch (error) {
-            this.showError('Помилка ініціалізації гри: ' + error.message);
+            this.showError(GameConfig.ERRORS.GAME_INITIALIZATION_FAILED + ': ' + error.message);
             console.error('Game initialization error:', error);
         }
     }
@@ -54,6 +77,46 @@ class WordGame {
         }
     }
 
+    async loadUserCategories() {
+        try {
+            return new Promise((resolve) => {
+                this.tg.CloudStorage.getItem(GameConfig.STORAGE_KEYS.USER_CATEGORIES, (err, value) => {
+                    if (!err && value) {
+                        try {
+                            this.userCategories = JSON.parse(value);
+                        } catch (parseError) {
+                            console.warn('Failed to parse user categories:', parseError);
+                            this.userCategories = {};
+                        }
+                    }
+                    resolve();
+                });
+            });
+        } catch (error) {
+            console.warn('Failed to load user categories:', error);
+            this.userCategories = {};
+        }
+    }
+
+    async saveUserCategories() {
+        try {
+            return new Promise((resolve, reject) => {
+                this.tg.CloudStorage.setItem(
+                    GameConfig.STORAGE_KEYS.USER_CATEGORIES, 
+                    JSON.stringify(this.userCategories), 
+                    (err, success) => {
+                        if (err) {
+                            reject(new Error(GameConfig.ERRORS.CLOUD_STORAGE_ERROR));
+                        } else {
+                            resolve(success);
+                        }
+                    }
+                );
+            });
+        } catch (error) {
+            throw new Error(GameConfig.ERRORS.CLOUD_STORAGE_ERROR);
+        }
+    }
     async loadSettings() {
         try {
             return new Promise((resolve) => {
@@ -62,6 +125,12 @@ class WordGame {
                         try {
                             const savedSettings = JSON.parse(value);
                             this.settings = { ...this.settings, ...savedSettings };
+                            
+                            // Apply difficulty settings if set
+                            if (this.settings.difficulty && GameConfig.DIFFICULTY_LEVELS[this.settings.difficulty]) {
+                                const difficultyConfig = GameConfig.DIFFICULTY_LEVELS[this.settings.difficulty];
+                                this.settings.roundDuration = difficultyConfig.roundDuration;
+                            }
                         } catch (parseError) {
                             console.warn('Failed to parse saved settings:', parseError);
                         }
@@ -132,13 +201,35 @@ class WordGame {
             });
             dictionarySelect.appendChild(mixedOption);
 
-            // Add category options
+            // Add default category options
             for (const category in wordDictionaries) {
                 const option = this.createElement('option', {
                     value: category,
-                    textContent: category
+                    textContent: `📚 ${category}`
                 });
                 dictionarySelect.appendChild(option);
+            }
+
+            // Add user categories if any
+            if (Object.keys(this.userCategories).length > 0) {
+                const separator = this.createElement('option', {
+                    disabled: true,
+                    textContent: '─── Мої категорії ───'
+                });
+                dictionarySelect.appendChild(separator);
+
+                for (const category in this.userCategories) {
+                    const option = this.createElement('option', {
+                        value: `user_${category}`,
+                        textContent: `👤 ${category}`
+                    });
+                    dictionarySelect.appendChild(option);
+                }
+            }
+
+            // Set previously selected category
+            if (this.settings.selectedCategory) {
+                dictionarySelect.value = this.settings.selectedCategory;
             }
         } catch (error) {
             this.showError(error.message);
@@ -225,15 +316,36 @@ class WordGame {
             this.playSound('click');
             const selectedCategory = document.getElementById('dictionary-select').value;
             
+            // Save selected category to settings
+            this.settings.selectedCategory = selectedCategory;
+            this.saveSettings().catch(console.warn);
+            
             if (selectedCategory === "Змішаний") {
+                // Combine all default categories
                 this.gameState.words = Object.values(wordDictionaries).flat();
+                
+                // Add user categories if any
+                if (Object.keys(this.userCategories).length > 0) {
+                    const userWords = Object.values(this.userCategories).flat();
+                    this.gameState.words = this.gameState.words.concat(userWords);
+                }
+            } else if (selectedCategory.startsWith('user_')) {
+                // User category
+                const categoryName = selectedCategory.replace('user_', '');
+                this.gameState.words = [...(this.userCategories[categoryName] || [])];
             } else {
+                // Default category
                 this.gameState.words = [...wordDictionaries[selectedCategory]];
+            }
+            
+            if (this.gameState.words.length === 0) {
+                throw new Error('Вибрана категорія порожня!');
             }
             
             this.gameState.player1Score = 0;
             this.gameState.player2Score = 0;
             this.gameState.currentRound = 0;
+            this.gameState.isGameActive = true;
             
             this.startNextRound();
         } catch (error) {
@@ -271,31 +383,39 @@ class WordGame {
         gameScreen.innerHTML = `
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-lg font-semibold text-gray-700">Раунд ${this.gameState.currentRound}</h2>
-                <button id="exit-game-btn" class="text-sm font-semibold text-indigo-600 hover:text-indigo-800">Вийти</button>
+                <button id="exit-game-btn" class="text-sm font-semibold text-indigo-600 hover:text-indigo-800" 
+                        aria-label="Вийти з гри">Вийти</button>
             </div>
             <div class="flex justify-between items-center mb-4">
                 <div class="text-center w-1/3">
                     <span class="text-sm text-gray-500">Гравець 1</span>
-                    <p id="player1-score" class="text-3xl font-bold text-indigo-600 transition-transform">${this.gameState.player1Score}</p>
+                    <p id="player1-score" class="text-3xl font-bold text-indigo-600 transition-transform" 
+                       aria-label="Рахунок гравця 1">${this.gameState.player1Score}</p>
                 </div>
                 <div class="text-center w-1/3">
                     <span class="text-sm text-gray-500">Час</span>
-                    <p id="timer" class="text-3xl font-bold text-red-500">${this.settings.roundDuration}</p>
+                    <p id="timer" class="text-3xl font-bold text-red-500" 
+                       aria-label="Час що залишився" aria-live="polite">${this.settings.roundDuration}</p>
                 </div>
                 <div class="text-center w-1/3">
                     <span class="text-sm text-gray-500">Гравець 2</span>
-                    <p id="player2-score" class="text-3xl font-bold text-teal-600 transition-transform">${this.gameState.player2Score}</p>
+                    <p id="player2-score" class="text-3xl font-bold text-teal-600 transition-transform" 
+                       aria-label="Рахунок гравця 2">${this.gameState.player2Score}</p>
                 </div>
             </div>
-            <div id="turn-indicator" class="text-center bg-gray-100 p-2 rounded-lg mb-6 text-gray-700 font-semibold"></div>
+            <div id="turn-indicator" class="text-center bg-gray-100 p-2 rounded-lg mb-6 text-gray-700 font-semibold" 
+                 aria-live="polite"></div>
             <div class="text-center my-6 p-6 bg-indigo-50 rounded-lg min-h-[120px] flex items-center justify-center">
-                <h2 id="word-to-guess" class="text-3xl md:text-4xl font-bold text-gray-800 tracking-wider word-display">СЛОВО</h2>
+                <h2 id="word-to-guess" class="text-3xl md:text-4xl font-bold text-gray-800 tracking-wider word-display" 
+                    aria-label="Слово для відгадування">СЛОВО</h2>
             </div>
-            <div id="streak-indicator" class="text-center text-amber-500 font-bold h-6"></div>
+            <div id="streak-indicator" class="text-center text-amber-500 font-bold h-6" aria-live="polite"></div>
             <div class="mt-2">
                 <div class="grid grid-cols-2 gap-4 mt-4">
-                    <button id="correct-button" class="btn btn-primary bg-green-500 hover:bg-green-600">Правильно!</button>
-                    <button id="skip-button" class="btn btn-secondary">Пропустити</button>
+                    <button id="correct-button" class="btn btn-primary bg-green-500 hover:bg-green-600" 
+                            aria-label="Відмітити як правильну відповідь">Правильно!</button>
+                    <button id="skip-button" class="btn btn-secondary" 
+                            aria-label="Пропустити це слово">Пропустити</button>
                 </div>
             </div>
         `;
@@ -311,6 +431,32 @@ class WordGame {
         if (exitBtn) exitBtn.addEventListener('click', () => this.backToStart());
         if (correctBtn) correctBtn.addEventListener('click', () => this.handleCorrectGuess());
         if (skipBtn) skipBtn.addEventListener('click', () => this.handleSkip());
+
+        // Add keyboard support for game controls
+        this.gameKeyboardHandler = (e) => {
+            if (!this.gameState.isGameActive) return;
+            
+            switch(e.key) {
+                case 'ArrowRight':
+                case 'Enter':
+                case ' ':
+                    e.preventDefault();
+                    this.handleCorrectGuess();
+                    break;
+                case 'ArrowLeft':
+                case 'Escape':
+                    e.preventDefault();
+                    this.handleSkip();
+                    break;
+                case 'q':
+                case 'Q':
+                    e.preventDefault();
+                    this.backToStart();
+                    break;
+            }
+        };
+
+        document.addEventListener('keydown', this.gameKeyboardHandler);
     }
 
     showScreen(screenElement) {
@@ -334,6 +480,13 @@ class WordGame {
     backToStart() {
         this.playSound('click');
         this.clearTimer();
+        this.gameState.isGameActive = false;
+        
+        // Remove keyboard event listener
+        if (this.gameKeyboardHandler) {
+            document.removeEventListener('keydown', this.gameKeyboardHandler);
+            this.gameKeyboardHandler = null;
+        }
         
         const currentScreen = document.querySelector('#screen-container .visible-screen');
         const startScreen = document.getElementById('start-screen');
@@ -375,8 +528,11 @@ class WordGame {
                 this.gameState.player2Score++;
             }
             
-            // Check for streak bonus
-            if (this.gameState.currentStreak > 0 && this.gameState.currentStreak % GameConfig.STREAK_BONUS_THRESHOLD === 0) {
+            // Check for streak bonus using current difficulty settings
+            const currentDifficulty = GameConfig.DIFFICULTY_LEVELS[this.settings.difficulty] || GameConfig.DIFFICULTY_LEVELS.NORMAL;
+            const streakThreshold = currentDifficulty.streakBonus;
+            
+            if (this.gameState.currentStreak > 0 && this.gameState.currentStreak % streakThreshold === 0) {
                 this.playSound('streak');
                 if (this.gameState.currentRound % 2 !== 0) {
                     this.gameState.player1Score++;
@@ -386,8 +542,9 @@ class WordGame {
                 
                 const streakIndicator = document.getElementById('streak-indicator');
                 if (streakIndicator) {
-                    streakIndicator.textContent = `Серія +1 бонус!`;
-                    setTimeout(() => streakIndicator.textContent = '', 1500);
+                    streakIndicator.textContent = `Серія ${this.gameState.currentStreak}! +1 бонус!`;
+                    streakIndicator.setAttribute('aria-live', 'polite');
+                    setTimeout(() => streakIndicator.textContent = '', 2000);
                 }
             }
         }
@@ -721,8 +878,24 @@ class WordGame {
             id: 'settings-screen'
         });
 
+        const difficultyOptions = Object.keys(GameConfig.DIFFICULTY_LEVELS).map(key => {
+            const level = GameConfig.DIFFICULTY_LEVELS[key];
+            const selected = this.settings.difficulty === key ? 'selected' : '';
+            return `<option value="${key}" ${selected}>${level.name} - ${level.description}</option>`;
+        }).join('');
+
         settingsScreen.innerHTML = `
             <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Налаштування</h2>
+            
+            <div class="mb-6">
+                <label for="difficulty-select" class="block mb-2 text-sm font-medium text-gray-700">
+                    Рівень складності:
+                </label>
+                <select id="difficulty-select" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5">
+                    ${difficultyOptions}
+                </select>
+            </div>
+            
             <div class="mb-6">
                 <label for="time-slider" class="block mb-2 text-sm font-medium text-gray-700">
                     Час раунду: <span id="time-value" class="font-bold text-indigo-600">${this.settings.roundDuration}</span> сек
@@ -730,6 +903,7 @@ class WordGame {
                 <input id="time-slider" type="range" min="30" max="120" value="${this.settings.roundDuration}" step="15" 
                        class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
             </div>
+            
             <div class="mb-6">
                 <label class="flex items-center">
                     <input type="checkbox" id="sound-toggle" ${this.settings.soundEnabled ? 'checked' : ''} 
@@ -737,15 +911,40 @@ class WordGame {
                     <span class="text-sm font-medium text-gray-700">Увімкнути звуки</span>
                 </label>
             </div>
-            <button id="save-settings-button" class="btn btn-primary w-full text-lg">Зберегти та повернутись</button>
+            
+            <div class="mb-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-3">Власні категорії</h3>
+                <button id="manage-categories-btn" class="btn btn-secondary w-full text-base">
+                    Керувати категоріями (${Object.keys(this.userCategories).length})
+                </button>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-3">
+                <button id="save-settings-button" class="btn btn-primary text-lg">Зберегти</button>
+                <button id="cancel-settings-button" class="btn btn-secondary text-lg">Скасувати</button>
+            </div>
         `;
 
         this.showScreen(settingsScreen);
         
+        const difficultySelect = document.getElementById('difficulty-select');
         const timeSlider = document.getElementById('time-slider');
         const timeValue = document.getElementById('time-value');
         const soundToggle = document.getElementById('sound-toggle');
+        const manageCategoriesBtn = document.getElementById('manage-categories-btn');
         const saveBtn = document.getElementById('save-settings-button');
+        const cancelBtn = document.getElementById('cancel-settings-button');
+        
+        // Update round duration when difficulty changes
+        if (difficultySelect) {
+            difficultySelect.addEventListener('change', (e) => {
+                const selectedDifficulty = GameConfig.DIFFICULTY_LEVELS[e.target.value];
+                if (selectedDifficulty) {
+                    timeSlider.value = selectedDifficulty.roundDuration;
+                    timeValue.textContent = selectedDifficulty.roundDuration;
+                }
+            });
+        }
         
         if (timeSlider && timeValue) {
             timeSlider.addEventListener('input', (e) => {
@@ -753,9 +952,14 @@ class WordGame {
             });
         }
         
+        if (manageCategoriesBtn) {
+            manageCategoriesBtn.addEventListener('click', () => this.showCategoryManager());
+        }
+        
         if (saveBtn) {
             saveBtn.addEventListener('click', async () => {
                 try {
+                    this.settings.difficulty = difficultySelect.value;
                     this.settings.roundDuration = parseInt(timeSlider.value, 10);
                     this.settings.soundEnabled = soundToggle.checked;
                     
@@ -769,6 +973,10 @@ class WordGame {
                     this.showError('Помилка збереження налаштувань: ' + error.message);
                 }
             });
+        }
+        
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', () => this.backToStart());
         }
     }
 
@@ -813,7 +1021,211 @@ class WordGame {
         });
     }
 
-    sendInvoice(amount) {
+    showCategoryManager() {
+        this.playSound('click');
+        
+        const managerScreen = this.createElement('div', {
+            className: 'card hidden-screen',
+            id: 'category-manager-screen'
+        });
+
+        const categoriesList = Object.keys(this.userCategories).map(categoryName => {
+            const wordCount = this.userCategories[categoryName].length;
+            return `
+                <div class="bg-gray-50 p-3 rounded-lg flex justify-between items-center">
+                    <div>
+                        <h4 class="font-medium text-gray-800">${categoryName}</h4>
+                        <p class="text-sm text-gray-500">${wordCount} слів</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button class="edit-category-btn text-indigo-600 hover:text-indigo-800 text-sm" data-category="${categoryName}">
+                            Редагувати
+                        </button>
+                        <button class="delete-category-btn text-red-600 hover:text-red-800 text-sm" data-category="${categoryName}">
+                            Видалити
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        managerScreen.innerHTML = `
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">Мої категорії</h2>
+                <button id="close-manager-button" class="text-gray-500 hover:text-gray-800 text-3xl leading-none">&times;</button>
+            </div>
+            
+            <div class="mb-6">
+                <button id="create-category-btn" class="btn btn-primary w-full text-lg">+ Створити нову категорію</button>
+            </div>
+            
+            <div id="categories-list" class="space-y-3 max-h-96 overflow-y-auto">
+                ${categoriesList.length > 0 ? categoriesList : '<p class="text-gray-500 text-center">Ще немає власних категорій</p>'}
+            </div>
+        `;
+
+        this.showScreen(managerScreen);
+        
+        const closeBtn = document.getElementById('close-manager-button');
+        const createBtn = document.getElementById('create-category-btn');
+        
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => this.showSettings());
+        }
+        
+        if (createBtn) {
+            createBtn.addEventListener('click', () => this.showCategoryEditor());
+        }
+        
+        // Add event listeners for edit and delete buttons
+        document.querySelectorAll('.edit-category-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const categoryName = e.target.dataset.category;
+                this.showCategoryEditor(categoryName);
+            });
+        });
+        
+        document.querySelectorAll('.delete-category-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const categoryName = e.target.dataset.category;
+                this.deleteCategory(categoryName);
+            });
+        });
+    }
+
+    showCategoryEditor(editCategoryName = null) {
+        this.playSound('click');
+        
+        const isEditing = !!editCategoryName;
+        const categoryData = isEditing ? this.userCategories[editCategoryName] : [];
+        
+        const editorScreen = this.createElement('div', {
+            className: 'card hidden-screen',
+            id: 'category-editor-screen'
+        });
+
+        editorScreen.innerHTML = `
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">
+                    ${isEditing ? 'Редагувати категорію' : 'Створити категорію'}
+                </h2>
+                <button id="close-editor-button" class="text-gray-500 hover:text-gray-800 text-3xl leading-none">&times;</button>
+            </div>
+            
+            <div class="mb-4">
+                <label for="category-name" class="block mb-2 text-sm font-medium text-gray-700">Назва категорії:</label>
+                <input type="text" id="category-name" value="${editCategoryName || ''}" 
+                       maxlength="${GameConfig.VALIDATION.MAX_CATEGORY_NAME_LENGTH}"
+                       class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5"
+                       placeholder="Введіть назву категорії">
+            </div>
+            
+            <div class="mb-4">
+                <label for="category-words" class="block mb-2 text-sm font-medium text-gray-700">
+                    Слова (по одному на рядок, мінімум ${GameConfig.VALIDATION.MIN_WORDS_PER_CATEGORY}):
+                </label>
+                <textarea id="category-words" rows="8" 
+                          class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5"
+                          placeholder="Введіть слова, кожне на новому рядку">${categoryData.join('\n')}</textarea>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-3">
+                <button id="save-category-button" class="btn btn-primary text-lg">
+                    ${isEditing ? 'Оновити' : 'Створити'}
+                </button>
+                <button id="cancel-editor-button" class="btn btn-secondary text-lg">Скасувати</button>
+            </div>
+        `;
+
+        this.showScreen(editorScreen);
+        
+        const closeBtn = document.getElementById('close-editor-button');
+        const saveBtn = document.getElementById('save-category-button');
+        const cancelBtn = document.getElementById('cancel-editor-button');
+        
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => this.showCategoryManager());
+        }
+        
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', () => this.showCategoryManager());
+        }
+        
+        if (saveBtn) {
+            saveBtn.addEventListener('click', () => this.saveCategory(editCategoryName));
+        }
+    }
+
+    async saveCategory(editCategoryName = null) {
+        try {
+            const nameInput = document.getElementById('category-name');
+            const wordsInput = document.getElementById('category-words');
+            
+            const categoryName = nameInput.value.trim();
+            const wordsText = wordsInput.value.trim();
+            
+            // Validation
+            if (!categoryName) {
+                throw new Error('Введіть назву категорії');
+            }
+            
+            if (categoryName.length > GameConfig.VALIDATION.MAX_CATEGORY_NAME_LENGTH) {
+                throw new Error(`Назва категорії занадто довга (максимум ${GameConfig.VALIDATION.MAX_CATEGORY_NAME_LENGTH} символів)`);
+            }
+            
+            if (!editCategoryName && this.userCategories[categoryName]) {
+                throw new Error(GameConfig.ERRORS.CATEGORY_EXISTS);
+            }
+            
+            const words = wordsText.split('\n')
+                .map(word => word.trim())
+                .filter(word => word.length > 0)
+                .filter(word => word.length <= GameConfig.VALIDATION.MAX_WORD_LENGTH);
+            
+            if (words.length < GameConfig.VALIDATION.MIN_WORDS_PER_CATEGORY) {
+                throw new Error(GameConfig.ERRORS.TOO_FEW_WORDS);
+            }
+            
+            if (words.length > GameConfig.VALIDATION.MAX_WORDS_PER_CATEGORY) {
+                throw new Error(`Занадто багато слів (максимум ${GameConfig.VALIDATION.MAX_WORDS_PER_CATEGORY})`);
+            }
+            
+            // Remove old category if editing with different name
+            if (editCategoryName && editCategoryName !== categoryName) {
+                delete this.userCategories[editCategoryName];
+            }
+            
+            // Save new/updated category
+            this.userCategories[categoryName] = words;
+            
+            await this.saveUserCategories();
+            await this.populateDictionaries(); // Refresh the dictionary dropdown
+            
+            this.showSuccess(editCategoryName ? GameConfig.MESSAGES.CATEGORY_UPDATED : GameConfig.MESSAGES.CATEGORY_CREATED);
+            
+            setTimeout(() => {
+                this.showCategoryManager();
+            }, 1000);
+            
+        } catch (error) {
+            this.showError(error.message);
+        }
+    }
+
+    async deleteCategory(categoryName) {
+        try {
+            if (confirm(`Ви впевнені, що хочете видалити категорію "${categoryName}"?`)) {
+                delete this.userCategories[categoryName];
+                await this.saveUserCategories();
+                await this.populateDictionaries(); // Refresh the dictionary dropdown
+                
+                this.showSuccess(GameConfig.MESSAGES.CATEGORY_DELETED);
+                this.showCategoryManager(); // Refresh the manager
+            }
+        } catch (error) {
+            this.showError('Помилка видалення категорії: ' + error.message);
+        }
+    }
         try {
             const providerToken = GameConfig.PAYMENT.PROVIDER_TOKEN;
             
