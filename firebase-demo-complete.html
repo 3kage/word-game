@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase Multiplayer Demo - Гра в слова</title>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
+    
+    <!-- Game styles -->
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="themes.css">
+    <link rel="stylesheet" href="animations.css">
+    
+    <style>
+        .demo-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .firebase-status {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: bold;
+            text-align: center;
+        }
+        
+        .status-connecting {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        
+        .status-connected {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .demo-section {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .demo-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .demo-button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            background: #4F46E5;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        
+        .demo-button:hover {
+            background: #4338CA;
+            transform: translateY(-1px);
+        }
+        
+        .demo-button:disabled {
+            background: #9CA3AF;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .demo-log {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 2px 0;
+        }
+        
+        .log-success { color: #28a745; }
+        .log-error { color: #dc3545; }
+        .log-info { color: #007bff; }
+        .log-warning { color: #ffc107; }
+        
+        .players-list {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+        
+        .player-card {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-size: 12px;
+        }
+        
+        .player-online {
+            border-color: #28a745;
+            background: #d4edda;
+        }
+        
+        .room-info {
+            background: #e3f2fd;
+            border: 1px solid #bbdefb;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .game-state {
+            background: #fff3e0;
+            border: 1px solid #ffcc02;
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <h1>🎮 Firebase Multiplayer Demo</h1>
+        
+        <div id="firebaseStatus" class="firebase-status status-connecting">
+            🔄 Підключення до Firebase...
+        </div>
+        
+        <!-- Тест з'єднання -->
+        <div class="demo-section">
+            <h2>📡 Тест з'єднання</h2>
+            <div class="demo-buttons">
+                <button class="demo-button" onclick="testConnection()">Тест підключення</button>
+                <button class="demo-button" onclick="testAuth()">Тест автентифікації</button>
+                <button class="demo-button" onclick="testDatabase()">Тест бази даних</button>
+                <button class="demo-button" onclick="clearLog()">Очистити лог</button>
+            </div>
+            <div id="connectionLog" class="demo-log"></div>
+        </div>
+        
+        <!-- Мультиплеєр демо -->
+        <div class="demo-section">
+            <h2>👥 Мультиплеєр демо</h2>
+            
+            <div id="roomInfo" class="room-info" style="display: none;">
+                <strong>Поточна кімната:</strong> <span id="currentRoomCode"></span><br>
+                <strong>Ваш статус:</strong> <span id="playerStatus"></span>
+            </div>
+            
+            <div class="demo-buttons">
+                <button class="demo-button" onclick="createRoom()">Створити кімнату</button>
+                <button class="demo-button" onclick="joinRandomRoom()">Приєднатися до кімнати</button>
+                <button class="demo-button" onclick="leaveRoom()" id="leaveBtn" style="display: none;">Покинути кімнату</button>
+                <button class="demo-button" onclick="startGame()" id="startBtn" style="display: none;">Почати гру</button>
+            </div>
+            
+            <div id="playersContainer">
+                <h3>Гравці в кімнаті:</h3>
+                <div id="playersList" class="players-list"></div>
+            </div>
+            
+            <div id="gameStateContainer" class="game-state" style="display: none;">
+                <h3>Стан гри:</h3>
+                <div id="gameStateDisplay"></div>
+            </div>
+            
+            <div id="multiplayerLog" class="demo-log"></div>
+        </div>
+    </div>
+
+    <!-- Firebase configuration and scripts -->
+    <script src="firebase-config.js"></script>
+    <script src="firebase-multiplayer.js"></script>
+    
+    <script>
+        // Global variables
+        let firebaseMultiplayer = null;
+        let currentRoom = null;
+        let currentUser = null;
+        
+        // DOM elements
+        const statusEl = document.getElementById('firebaseStatus');
+        const connectionLog = document.getElementById('connectionLog');
+        const multiplayerLog = document.getElementById('multiplayerLog');
+        const roomInfo = document.getElementById('roomInfo');
+        const currentRoomCode = document.getElementById('currentRoomCode');
+        const playerStatus = document.getElementById('playerStatus');
+        const playersList = document.getElementById('playersList');
+        const gameStateDisplay = document.getElementById('gameStateDisplay');
+        const leaveBtn = document.getElementById('leaveBtn');
+        const startBtn = document.getElementById('startBtn');
+        
+        // Initialize Firebase
+        async function initializeFirebase() {
+            try {
+                const config = FirebaseConfig.getConfig();
+                firebase.initializeApp(config.firebaseConfig);
+                
+                firebaseMultiplayer = new FirebaseMultiplayerManager();
+                
+                // Setup event listeners
+                setupEventListeners();
+                
+                // Initialize authentication
+                await firebaseMultiplayer.initialize();
+                
+                statusEl.className = 'firebase-status status-connected';
+                statusEl.innerHTML = '✅ Firebase підключено успішно!';
+                
+                logConnection('success', 'Firebase ініціалізовано успішно');
+                
+            } catch (error) {
+                statusEl.className = 'firebase-status status-error';
+                statusEl.innerHTML = '❌ Помилка підключення: ' + error.message;
+                logConnection('error', 'Помилка ініціалізації: ' + error.message);
+            }
+        }
+        
+        function setupEventListeners() {
+            firebaseMultiplayer.on('roomJoined', (room) => {
+                currentRoom = room;
+                updateRoomDisplay();
+                logMultiplayer('success', `Приєдналися до кімнати: ${room.code}`);
+            });
+            
+            firebaseMultiplayer.on('roomLeft', () => {
+                currentRoom = null;
+                updateRoomDisplay();
+                logMultiplayer('info', 'Покинули кімнату');
+            });
+            
+            firebaseMultiplayer.on('playerJoined', (player) => {
+                updatePlayersDisplay();
+                logMultiplayer('info', `Гравець приєднався: ${player.name}`);
+            });
+            
+            firebaseMultiplayer.on('playerLeft', (player) => {
+                updatePlayersDisplay();
+                logMultiplayer('warning', `Гравець покинув гру: ${player.name}`);
+            });
+            
+            firebaseMultiplayer.on('gameStateUpdated', (gameState) => {
+                updateGameStateDisplay(gameState);
+                logMultiplayer('info', 'Стан гри оновлено');
+            });
+            
+            firebaseMultiplayer.on('error', (error) => {
+                logMultiplayer('error', 'Помилка: ' + error.message);
+            });
+        }
+        
+        // Connection tests
+        async function testConnection() {
+            logConnection('info', 'Тестування підключення...');
+            try {
+                const config = FirebaseConfig.getConfig();
+                logConnection('success', 'Конфігурація завантажена');
+                logConnection('info', `Проект: ${config.firebaseConfig.projectId}`);
+                logConnection('info', `Database URL: ${config.firebaseConfig.databaseURL}`);
+            } catch (error) {
+                logConnection('error', 'Помилка конфігурації: ' + error.message);
+            }
+        }
+        
+        async function testAuth() {
+            logConnection('info', 'Тестування автентифікації...');
+            try {
+                const user = firebase.auth().currentUser;
+                if (user) {
+                    logConnection('success', `Користувач автентифікований: ${user.uid}`);
+                } else {
+                    logConnection('warning', 'Користувач не автентифікований');
+                    const userCredential = await firebase.auth().signInAnonymously();
+                    logConnection('success', `Анонімна автентифікація: ${userCredential.user.uid}`);
+                }
+            } catch (error) {
+                logConnection('error', 'Помилка автентифікації: ' + error.message);
+            }
+        }
+        
+        async function testDatabase() {
+            logConnection('info', 'Тестування бази даних...');
+            try {
+                const testRef = firebase.database().ref('test').push();
+                const testData = {
+                    message: 'Test from Firebase Demo',
+                    timestamp: firebase.database.ServerValue.TIMESTAMP,
+                    user: firebase.auth().currentUser?.uid || 'anonymous'
+                };
+                
+                await testRef.set(testData);
+                logConnection('success', 'Тестові дані записано в базу');
+                
+                const snapshot = await testRef.once('value');
+                const data = snapshot.val();
+                logConnection('success', 'Тестові дані прочитано з бази');
+                logConnection('info', `Дані: ${JSON.stringify(data, null, 2)}`);
+                
+                // Clean up
+                await testRef.remove();
+                logConnection('success', 'Тестові дані видалено');
+                
+            } catch (error) {
+                logConnection('error', 'Помилка бази даних: ' + error.message);
+            }
+        }
+        
+        // Multiplayer functions
+        async function createRoom() {
+            if (!firebaseMultiplayer) {
+                logMultiplayer('error', 'Firebase не ініціалізовано');
+                return;
+            }
+            
+            try {
+                logMultiplayer('info', 'Створення кімнати...');
+                const roomCode = await firebaseMultiplayer.createRoom({
+                    maxPlayers: 4,
+                    gameMode: 'demo',
+                    isPrivate: false
+                });
+                logMultiplayer('success', `Кімната створена: ${roomCode}`);
+            } catch (error) {
+                logMultiplayer('error', 'Помилка створення кімнати: ' + error.message);
+            }
+        }
+        
+        async function joinRandomRoom() {
+            if (!firebaseMultiplayer) {
+                logMultiplayer('error', 'Firebase не ініціалізовано');
+                return;
+            }
+            
+            try {
+                logMultiplayer('info', 'Пошук доступних кімнат...');
+                const joined = await firebaseMultiplayer.joinRandomRoom();
+                if (!joined) {
+                    logMultiplayer('warning', 'Доступних кімнат не знайдено. Створюємо нову...');
+                    await createRoom();
+                }
+            } catch (error) {
+                logMultiplayer('error', 'Помилка приєднання: ' + error.message);
+            }
+        }
+        
+        async function leaveRoom() {
+            if (!firebaseMultiplayer || !currentRoom) {
+                return;
+            }
+            
+            try {
+                await firebaseMultiplayer.leaveRoom();
+            } catch (error) {
+                logMultiplayer('error', 'Помилка виходу з кімнати: ' + error.message);
+            }
+        }
+        
+        async function startGame() {
+            if (!firebaseMultiplayer || !currentRoom) {
+                return;
+            }
+            
+            try {
+                await firebaseMultiplayer.sendGameAction({
+                    type: 'START_GAME',
+                    data: {
+                        word: 'ТЕСТ',
+                        difficulty: 'easy'
+                    }
+                });
+                logMultiplayer('success', 'Гра розпочата!');
+            } catch (error) {
+                logMultiplayer('error', 'Помилка початку гри: ' + error.message);
+            }
+        }
+        
+        // UI Updates
+        function updateRoomDisplay() {
+            if (currentRoom) {
+                roomInfo.style.display = 'block';
+                currentRoomCode.textContent = currentRoom.code;
+                playerStatus.textContent = currentRoom.hostId === firebase.auth().currentUser?.uid ? 'Хост' : 'Гравець';
+                leaveBtn.style.display = 'inline-block';
+                startBtn.style.display = currentRoom.hostId === firebase.auth().currentUser?.uid ? 'inline-block' : 'none';
+            } else {
+                roomInfo.style.display = 'none';
+                leaveBtn.style.display = 'none';
+                startBtn.style.display = 'none';
+            }
+            updatePlayersDisplay();
+        }
+        
+        function updatePlayersDisplay() {
+            if (!currentRoom || !currentRoom.players) {
+                playersList.innerHTML = '<div class="player-card">Немає гравців</div>';
+                return;
+            }
+            
+            const players = Object.values(currentRoom.players);
+            playersList.innerHTML = players.map(player => {
+                const isOnline = player.status === 'online';
+                const isHost = player.id === currentRoom.hostId;
+                return `
+                    <div class="player-card ${isOnline ? 'player-online' : ''}">
+                        ${player.name} ${isHost ? '(Хост)' : ''}
+                        <br><small>${isOnline ? '🟢 Онлайн' : '🔴 Офлайн'}</small>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function updateGameStateDisplay(gameState) {
+            if (!gameState) {
+                document.getElementById('gameStateContainer').style.display = 'none';
+                return;
+            }
+            
+            document.getElementById('gameStateContainer').style.display = 'block';
+            gameStateDisplay.innerHTML = `
+                <strong>Стан:</strong> ${gameState.status || 'waiting'}<br>
+                <strong>Слово:</strong> ${gameState.currentWord || 'не вибрано'}<br>
+                <strong>Хід:</strong> ${gameState.currentPlayer || 'очікування'}<br>
+                <strong>Спроби:</strong> ${gameState.attempts || 0}/6
+            `;
+        }
+        
+        // Logging functions
+        function logConnection(type, message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.textContent = `[${timestamp}] ${message}`;
+            connectionLog.appendChild(entry);
+            connectionLog.scrollTop = connectionLog.scrollHeight;
+        }
+        
+        function logMultiplayer(type, message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.textContent = `[${timestamp}] ${message}`;
+            multiplayerLog.appendChild(entry);
+            multiplayerLog.scrollTop = multiplayerLog.scrollHeight;
+        }
+        
+        function clearLog() {
+            connectionLog.innerHTML = '';
+        }
+        
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', initializeFirebase);
+    </script>
+</body>
+</html>

@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Гра в слова - Firebase Multiplayer</title>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
+    
+    <!-- Game styles -->
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="themes.css">
+    <link rel="stylesheet" href="animations.css">
+    
+    <!-- Progressive Web App -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4F46E5">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    
+    <style>
+        .multiplayer-panel {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 300px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            z-index: 1000;
+            transition: transform 0.3s ease;
+        }
+        
+        .multiplayer-panel.collapsed {
+            transform: translateX(250px);
+        }
+        
+        .panel-header {
+            padding: 15px;
+            background: #4F46E5;
+            color: white;
+            border-radius: 12px 12px 0 0;
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            cursor: pointer;
+        }
+        
+        .panel-content {
+            padding: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .connection-status {
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        
+        .status-online {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status-offline {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .multiplayer-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+        
+        .mp-button {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            background: #4F46E5;
+            color: white;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background 0.2s;
+        }
+        
+        .mp-button:hover {
+            background: #4338CA;
+        }
+        
+        .mp-button:disabled {
+            background: #9CA3AF;
+            cursor: not-allowed;
+        }
+        
+        .mp-button.secondary {
+            background: #6B7280;
+        }
+        
+        .mp-button.danger {
+            background: #DC2626;
+        }
+        
+        .room-display {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 10px;
+            font-size: 12px;
+        }
+        
+        .players-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5px;
+            margin-top: 10px;
+        }
+        
+        .player-item {
+            background: #f1f3f4;
+            padding: 5px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            text-align: center;
+        }
+        
+        .player-host {
+            background: #e3f2fd;
+            font-weight: bold;
+        }
+        
+        .player-current {
+            background: #fff3e0;
+            border: 2px solid #ff9800;
+        }
+        
+        .toggle-btn {
+            position: absolute;
+            left: -30px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 25px;
+            height: 40px;
+            background: #4F46E5;
+            border: none;
+            border-radius: 6px 0 0 6px;
+            color: white;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .game-sync-indicator {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 8px 12px;
+            background: #28a745;
+            color: white;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .game-sync-indicator.visible {
+            opacity: 1;
+        }
+        
+        @media (max-width: 768px) {
+            .multiplayer-panel {
+                width: 280px;
+                top: 10px;
+                right: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Основна гра -->
+    <div id="gameContainer">
+        <!-- Завантажується з index.html -->
+    </div>
+    
+    <!-- Firebase Multiplayer Panel -->
+    <div id="multiplayerPanel" class="multiplayer-panel collapsed">
+        <button class="toggle-btn" onclick="togglePanel()">👥</button>
+        
+        <div class="panel-header" onclick="togglePanel()">
+            <span>🔥 Мультиплеєр</span>
+            <span id="panelToggle">▶</span>
+        </div>
+        
+        <div class="panel-content">
+            <div id="connectionStatus" class="connection-status status-offline">
+                🔄 Підключення...
+            </div>
+            
+            <div class="multiplayer-buttons">
+                <button class="mp-button" onclick="createRoom()" id="createBtn">
+                    ➕ Створити кімнату
+                </button>
+                <button class="mp-button" onclick="joinRandomRoom()" id="joinBtn">
+                    🔍 Знайти гру
+                </button>
+                <button class="mp-button secondary" onclick="joinByCode()" id="codeBtn">
+                    🔢 Ввести код
+                </button>
+                <button class="mp-button danger" onclick="leaveRoom()" id="leaveBtn" style="display: none;">
+                    🚪 Покинути
+                </button>
+            </div>
+            
+            <div id="roomDisplay" style="display: none;">
+                <div class="room-display">
+                    <strong>Кімната:</strong> <span id="roomCode"></span><br>
+                    <strong>Статус:</strong> <span id="gameStatus">Очікування</span>
+                </div>
+                
+                <div id="playersSection">
+                    <strong>Гравці (<span id="playerCount">0</span>/4):</strong>
+                    <div id="playersGrid" class="players-grid"></div>
+                </div>
+                
+                <button class="mp-button" onclick="startMultiplayerGame()" id="startGameBtn" style="display: none;">
+                    🎮 Почати гру
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Sync indicator -->
+    <div id="syncIndicator" class="game-sync-indicator">
+        🔄 Синхронізація...
+    </div>
+    
+    <!-- Загрузка основного контенту гри -->
+    <div style="display: none;" id="mainGameLoader">
+        <!-- Тут буде загружено основну гру -->
+    </div>
+
+    <!-- Scripts -->
+    <script src="firebase-config.js"></script>
+    <script src="firebase-multiplayer.js"></script>
+    <script src="firebase-game-integration.js"></script>
+    <script src="words.js"></script>
+    <script src="game.js"></script>
+    <script src="config.js"></script>
+    <script src="localization.js"></script>
+    <script src="themes.js" defer></script>
+    <script src="speech.js" defer></script>
+    <script src="analytics.js" defer></script>
+    
+    <script>
+        // Global variables
+        let firebaseMultiplayer = null;
+        let gameIntegration = null;
+        let mainGame = null;
+        let currentRoom = null;
+        let isPanelCollapsed = true;
+        
+        // DOM elements
+        const panel = document.getElementById('multiplayerPanel');
+        const panelToggle = document.getElementById('panelToggle');
+        const connectionStatus = document.getElementById('connectionStatus');
+        const roomDisplay = document.getElementById('roomDisplay');
+        const roomCode = document.getElementById('roomCode');
+        const gameStatus = document.getElementById('gameStatus');
+        const playerCount = document.getElementById('playerCount');
+        const playersGrid = document.getElementById('playersGrid');
+        const syncIndicator = document.getElementById('syncIndicator');
+        
+        // Buttons
+        const createBtn = document.getElementById('createBtn');
+        const joinBtn = document.getElementById('joinBtn');
+        const codeBtn = document.getElementById('codeBtn');
+        const leaveBtn = document.getElementById('leaveBtn');
+        const startGameBtn = document.getElementById('startGameBtn');
+        
+        // Initialize everything
+        async function initializeApp() {
+            try {
+                // Initialize Firebase
+                const config = FirebaseConfig.getConfig();
+                firebase.initializeApp(config.firebaseConfig);
+                
+                firebaseMultiplayer = new FirebaseMultiplayerManager();
+                await firebaseMultiplayer.initialize();
+                
+                // Setup event listeners
+                setupFirebaseEvents();
+                
+                // Load main game content
+                await loadMainGame();
+                
+                // Initialize game integration
+                gameIntegration = new FirebaseGameIntegration(firebaseMultiplayer, mainGame);
+                
+                updateConnectionStatus(true);
+                
+            } catch (error) {
+                console.error('Initialization error:', error);
+                updateConnectionStatus(false, error.message);
+            }
+        }
+        
+        async function loadMainGame() {
+            try {
+                // Завантажуємо основний HTML контент гри
+                const response = await fetch('index.html');
+                const html = await response.text();
+                
+                // Витягуємо body контент
+                const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+                if (bodyMatch) {
+                    const gameContainer = document.getElementById('gameContainer');
+                    gameContainer.innerHTML = bodyMatch[1];
+                    
+                    // Ініціалізуємо основну гру
+                    if (typeof WordGame !== 'undefined') {
+                        mainGame = new WordGame();
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading main game:', error);
+            }
+        }
+        
+        function setupFirebaseEvents() {
+            firebaseMultiplayer.on('roomJoined', (room) => {
+                currentRoom = room;
+                updateRoomDisplay();
+                showSyncIndicator();
+            });
+            
+            firebaseMultiplayer.on('roomLeft', () => {
+                currentRoom = null;
+                updateRoomDisplay();
+            });
+            
+            firebaseMultiplayer.on('playerJoined', (player) => {
+                updatePlayersDisplay();
+                showSyncIndicator();
+            });
+            
+            firebaseMultiplayer.on('playerLeft', (player) => {
+                updatePlayersDisplay();
+            });
+            
+            firebaseMultiplayer.on('gameStateUpdated', (gameState) => {
+                updateGameStatus(gameState);
+                showSyncIndicator();
+            });
+            
+            firebaseMultiplayer.on('gameAction', (action) => {
+                handleGameAction(action);
+                showSyncIndicator();
+            });
+            
+            firebaseMultiplayer.on('error', (error) => {
+                console.error('Firebase error:', error);
+                alert('Помилка мультиплеєра: ' + error.message);
+            });
+        }
+        
+        // UI Functions
+        function togglePanel() {
+            isPanelCollapsed = !isPanelCollapsed;
+            panel.classList.toggle('collapsed', isPanelCollapsed);
+            panelToggle.textContent = isPanelCollapsed ? '▶' : '◀';
+        }
+        
+        function updateConnectionStatus(isConnected, errorMessage = '') {
+            if (isConnected) {
+                connectionStatus.className = 'connection-status status-online';
+                connectionStatus.innerHTML = '🟢 Підключено';
+                enableButtons(true);
+            } else {
+                connectionStatus.className = 'connection-status status-offline';
+                connectionStatus.innerHTML = '🔴 Відключено' + (errorMessage ? `<br><small>${errorMessage}</small>` : '');
+                enableButtons(false);
+            }
+        }
+        
+        function enableButtons(enabled) {
+            createBtn.disabled = !enabled;
+            joinBtn.disabled = !enabled;
+            codeBtn.disabled = !enabled;
+        }
+        
+        function updateRoomDisplay() {
+            if (currentRoom) {
+                roomDisplay.style.display = 'block';
+                roomCode.textContent = currentRoom.code;
+                
+                // Show/hide buttons based on role
+                const isHost = currentRoom.hostId === firebase.auth().currentUser?.uid;
+                leaveBtn.style.display = 'block';
+                startGameBtn.style.display = isHost ? 'block' : 'none';
+                
+                // Hide join buttons
+                createBtn.style.display = 'none';
+                joinBtn.style.display = 'none';
+                codeBtn.style.display = 'none';
+                
+                updatePlayersDisplay();
+            } else {
+                roomDisplay.style.display = 'none';
+                leaveBtn.style.display = 'none';
+                startGameBtn.style.display = 'none';
+                
+                // Show join buttons
+                createBtn.style.display = 'block';
+                joinBtn.style.display = 'block';
+                codeBtn.style.display = 'block';
+            }
+        }
+        
+        function updatePlayersDisplay() {
+            if (!currentRoom || !currentRoom.players) {
+                playerCount.textContent = '0';
+                playersGrid.innerHTML = '';
+                return;
+            }
+            
+            const players = Object.values(currentRoom.players);
+            playerCount.textContent = players.length;
+            
+            playersGrid.innerHTML = players.map(player => {
+                const isHost = player.id === currentRoom.hostId;
+                const isCurrent = player.id === firebase.auth().currentUser?.uid;
+                let className = 'player-item';
+                if (isHost) className += ' player-host';
+                if (isCurrent) className += ' player-current';
+                
+                return `
+                    <div class="${className}">
+                        ${player.name}${isHost ? ' 👑' : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function updateGameStatus(gameState) {
+            if (gameState && gameState.status) {
+                const statusMap = {
+                    'waiting': 'Очікування',
+                    'starting': 'Підготовка',
+                    'playing': 'Гра йде',
+                    'finished': 'Завершено'
+                };
+                gameStatus.textContent = statusMap[gameState.status] || gameState.status;
+            }
+        }
+        
+        function showSyncIndicator() {
+            syncIndicator.classList.add('visible');
+            setTimeout(() => {
+                syncIndicator.classList.remove('visible');
+            }, 1500);
+        }
+        
+        // Multiplayer Functions
+        async function createRoom() {
+            try {
+                const playerName = prompt('Введіть ваше ім\'я:') || `Гравець ${Math.floor(Math.random() * 1000)}`;
+                await firebaseMultiplayer.createRoom({
+                    maxPlayers: 4,
+                    gameMode: 'ukrainian-words',
+                    isPrivate: false
+                }, playerName);
+                
+                // Auto-expand panel when room is created
+                if (isPanelCollapsed) {
+                    togglePanel();
+                }
+            } catch (error) {
+                alert('Помилка створення кімнати: ' + error.message);
+            }
+        }
+        
+        async function joinRandomRoom() {
+            try {
+                const playerName = prompt('Введіть ваше ім\'я:') || `Гравець ${Math.floor(Math.random() * 1000)}`;
+                const joined = await firebaseMultiplayer.joinRandomRoom(playerName);
+                
+                if (!joined) {
+                    if (confirm('Доступних кімнат не знайдено. Створити нову?')) {
+                        await createRoom();
+                    }
+                }
+                
+                // Auto-expand panel when joined
+                if (isPanelCollapsed) {
+                    togglePanel();
+                }
+            } catch (error) {
+                alert('Помилка приєднання: ' + error.message);
+            }
+        }
+        
+        async function joinByCode() {
+            try {
+                const code = prompt('Введіть код кімнати:');
+                if (!code) return;
+                
+                const playerName = prompt('Введіть ваше ім\'я:') || `Гравець ${Math.floor(Math.random() * 1000)}`;
+                await firebaseMultiplayer.joinRoom(code.toUpperCase(), playerName);
+                
+                // Auto-expand panel when joined
+                if (isPanelCollapsed) {
+                    togglePanel();
+                }
+            } catch (error) {
+                alert('Помилка приєднання: ' + error.message);
+            }
+        }
+        
+        async function leaveRoom() {
+            if (confirm('Покинути поточну гру?')) {
+                try {
+                    await firebaseMultiplayer.leaveRoom();
+                } catch (error) {
+                    alert('Помилка виходу: ' + error.message);
+                }
+            }
+        }
+        
+        async function startMultiplayerGame() {
+            try {
+                await firebaseMultiplayer.sendGameAction({
+                    type: 'START_GAME',
+                    data: {
+                        difficulty: 'medium',
+                        rounds: 6
+                    }
+                });
+            } catch (error) {
+                alert('Помилка початку гри: ' + error.message);
+            }
+        }
+        
+        function handleGameAction(action) {
+            // Обробка дій від інших гравців
+            if (gameIntegration) {
+                gameIntegration.handleRemoteAction(action);
+            }
+        }
+        
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', initializeApp);
+        
+        // Service Worker for PWA
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js');
+        }
+    </script>
+</body>
+</html>
