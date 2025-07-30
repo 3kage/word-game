@@ -23,11 +23,11 @@
 ```bash
 # Fork репозиторію на GitHub
 # Клонуйте ваш fork
-git clone https://github.com/ваш-username/words-game-ua.git
-cd words-game-ua
+git clone https://github.com/ваш-username/word-game.git
+cd word-game
 
 # Додайте оригінальний репозиторій як upstream
-git remote add upstream https://github.com/3kage/words-game-ua.git
+git remote add upstream https://github.com/3kage/word-game.git
 
 # Встановіть залежності
 npm install

@@ -1,5 +1,5 @@
 {
-  "name": "words-game-ua",
+  "name": "word-game",
   "version": "1.0.0",
   "description": "🎮 Ukrainian Word Guessing Game for Telegram WebApp - Гра для двох гравців в Telegram, де учасники по черзі описують та відгадують слова",
   "main": "index.html",
@@ -7,6 +7,7 @@
     "start": "serve -s . -l 8080",
     "dev": "serve -s . -l 8080",
     "serve": "serve -s .",
+    "setup": "node -e \"console.log('🎮 Для Windows: setup.bat\\n🐧 Для Linux/Mac: ./setup.sh')\"",
     "build": "npm run minify",
     "minify": "npm run minify:js && npm run minify:css",
     "minify:js": "terser game.js --compress --mangle -o dist/game.min.js && terser config.js --compress --mangle -o dist/config.min.js && terser words.js --compress --mangle -o dist/words.min.js",
@@ -20,7 +21,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/3kage/words-game-ua.git"
+    "url": "git+https://github.com/3kage/word-game.git"
   },
   "keywords": [
     "telegram",
@@ -35,9 +36,9 @@
   "author": "3kage",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/3kage/words-game-ua/issues"
+    "url": "https://github.com/3kage/word-game/issues"
   },
-  "homepage": "https://3kage.github.io/words-game-ua",
+  "homepage": "https://3kage.github.io/word-game",
   "devDependencies": {
     "serve": "^14.2.1",
     "terser": "^5.24.0",

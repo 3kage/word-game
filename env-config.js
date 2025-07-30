@@ -1,47 +1,104 @@
-// Environment Configuration Loader
-// This file loads environment variables safely
+// Environment Configuration Manager
+// This file provides a safe way to load environment variables in the browser
 
 class EnvironmentConfig {
     constructor() {
-        this.config = this.loadConfig();
+        this.config = new Map();
+        this.loadEnvironmentVariables();
     }
 
-    loadConfig() {
-        // In production, these should be loaded from environment variables
-        // For development, you can create a .env file
-        const config = {
-            // Default values (safe to commit)
-            TELEGRAM_BOT_USERNAME: 'word_game_ua_bot',
-            PAYMENT_CURRENCY: 'USDT',
-            DONATION_AMOUNTS: [2, 5, 10],
-            GAME_ENVIRONMENT: 'development'
+    loadEnvironmentVariables() {
+        // Default fallback values (safe for public repository)
+        const defaults = {
+            'TELEGRAM_BOT_USERNAME': 'word_game_ua_bot',
+            'PAYMENT_PROVIDER_TOKEN': 'PAYMENT_TOKEN_NOT_CONFIGURED',
+            'PAYMENT_CURRENCY': 'USDT',
+            'GAME_ENVIRONMENT': 'production',
+            'DEBUG_MODE': 'false'
         };
 
-        // Load from environment if available (for GitHub Pages/production)
+        // Load defaults first
+        Object.keys(defaults).forEach(key => {
+            this.config.set(key, defaults[key]);
+        });
+
+        // Load from environment if available (for build-time injection)
         if (typeof process !== 'undefined' && process.env) {
-            config.TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-            config.PAYMENT_PROVIDER_TOKEN = process.env.PAYMENT_PROVIDER_TOKEN;
-            config.TELEGRAM_BOT_USERNAME = process.env.TELEGRAM_BOT_USERNAME || config.TELEGRAM_BOT_USERNAME;
-            config.GAME_ENVIRONMENT = process.env.GAME_ENVIRONMENT || config.GAME_ENVIRONMENT;
+            Object.keys(defaults).forEach(key => {
+                if (process.env[key]) {
+                    this.config.set(key, process.env[key]);
+                }
+            });
         }
 
-        return config;
+        // For GitHub Pages, variables can be injected during build process
+        this.loadFromBuildTimeVariables();
+    }
+
+    loadFromBuildTimeVariables() {
+        try {
+            // Check if build-time variables were injected
+            if (typeof window !== 'undefined' && window.BUILD_CONFIG) {
+                Object.keys(window.BUILD_CONFIG).forEach(key => {
+                    this.config.set(key, window.BUILD_CONFIG[key]);
+                });
+            }
+        } catch (error) {
+            console.warn('Failed to load build-time configuration:', error);
+        }
     }
 
     get(key) {
-        return this.config[key];
+        return this.config.get(key);
     }
 
+    set(key, value) {
+        this.config.set(key, value);
+    }
+
+    has(key) {
+        return this.config.has(key);
+    }
+
+    // Development mode helpers
     isDevelopment() {
-        return this.config.GAME_ENVIRONMENT === 'development';
+        return this.get('GAME_ENVIRONMENT') === 'development';
     }
 
     isProduction() {
-        return this.config.GAME_ENVIRONMENT === 'production';
+        return this.get('GAME_ENVIRONMENT') === 'production';
+    }
+
+    isDebugMode() {
+        return this.get('DEBUG_MODE') === 'true';
+    }
+
+    // Payment configuration
+    isPaymentConfigured() {
+        const token = this.get('PAYMENT_PROVIDER_TOKEN');
+        return token && token !== 'PAYMENT_TOKEN_NOT_CONFIGURED' && token.trim().length > 0;
+    }
+
+    getPaymentToken() {
+        if (!this.isPaymentConfigured()) {
+            console.warn('Payment provider token not configured');
+            return null;
+        }
+        return this.get('PAYMENT_PROVIDER_TOKEN');
+    }
+
+    // Bot configuration
+    getBotUsername() {
+        return this.get('TELEGRAM_BOT_USERNAME');
+    }
+
+    // Get donation amounts
+    getDonationAmounts() {
+        return [2, 5, 10]; // Static for now, can be made configurable
     }
 }
 
-// Export for use in other files
+// Create global instance
 const envConfig = new EnvironmentConfig();
 
 // Make available globally for browser usage

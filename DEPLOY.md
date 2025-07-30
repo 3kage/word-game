@@ -6,8 +6,8 @@
 
 ```bash
 # Клонуйте репозиторій
-git clone https://github.com/ваш-username/words-game-ua.git
-cd words-game-ua
+git clone https://github.com/ваш-username/word-game.git
+cd word-game
 
 # Встановіть залежності
 npm install
@@ -81,7 +81,7 @@ npm run deploy
 #### Перевірка деплою:
 - Йдіть в Actions tab вашого репозиторію
 - Перевірте статус workflows
-- Ваш сайт буде доступний на: `https://ваш-username.github.io/words-game-ua`
+- Ваш сайт буде доступний на: `https://ваш-username.github.io/word-game`
 
 #### Налаштування Custom Domain (опціонально):
 1. Додайте CNAME файл в root папку з вашим доменом

@@ -13,7 +13,7 @@
 Натомість:
 
 1. **Відправте email на:** [your-email@example.com]
-2. **Або створіть приватний Security Advisory:** [GitHub Security Advisories](https://github.com/3kage/words-game-ua/security/advisories)
+2. **Або створіть приватний Security Advisory:** [GitHub Security Advisories](https://github.com/3kage/word-game/security/advisories)
 
 ### Що включити в звіт:
 
@@ -58,4 +58,4 @@
 
 - **Email:** [your-email@example.com]
 - **Telegram:** [@your_telegram_handle]
-- **GitHub:** [Security Advisories](https://github.com/3kage/words-game-ua/security/advisories)
+- **GitHub:** [Security Advisories](https://github.com/3kage/word-game/security/advisories)

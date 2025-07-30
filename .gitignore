@@ -39,3 +39,7 @@ coverage/
 # npm
 package-lock.json
 yarn.lock
+
+# Executable scripts are allowed
+!setup.sh
+!setup.bat

@@ -2,6 +2,20 @@
 
 Гра для двох гравців в Telegram WebApp, де учасники по черзі описують та відгадують слова, заробляючи бали.
 
+## 🚀 Quick Start
+
+**Новий розробник?** → [QUICKSTART.md](./QUICKSTART.md)
+
+```bash
+# Windows
+git clone https://github.com/3kage/word-game.git
+cd word-game && setup.bat
+
+# Linux/Mac  
+git clone https://github.com/3kage/word-game.git
+cd word-game && chmod +x setup.sh && ./setup.sh
+```
+
 ## 🌟 Основні функції
 
 ### 🎯 Ігровий процес
@@ -65,8 +79,8 @@
 ### Швидкий старт:
 ```bash
 # Клонування репозиторію
-git clone https://github.com/3kage/words-game-ua.git
-cd words-game-ua
+git clone https://github.com/3kage/word-game.git
+cd word-game
 
 # Встановлення залежностей
 npm install
@@ -164,7 +178,7 @@ npm run dev
 5. Відкрийте Pull Request
 
 ### Звітування про помилки:
-- Використовуйте [GitHub Issues](https://github.com/3kage/words-game-ua/issues)
+- Використовуйте [GitHub Issues](https://github.com/3kage/word-game/issues)
 - Оберіть відповідний шаблон (Bug Report / Feature Request)
 
 ## 📄 Ліцензія
@@ -176,4 +190,4 @@ npm run dev
 **Розробник:** 3kage  
 **Ліцензія:** MIT  
 **Підтримка:** [Telegram Bot](https://t.me/word_game_ua_bot)  
-**Демо:** [GitHub Pages](https://3kage.github.io/words-game-ua)
+**Демо:** [GitHub Pages](https://3kage.github.io/word-game)
