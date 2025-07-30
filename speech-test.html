@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест голосових функцій</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="speech-styles.css">
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-2xl mx-auto">
+        <h1 class="text-3xl font-bold mb-8 text-center">🎤 Тест голосових функцій</h1>
+        
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4">Налаштування</h2>
+            
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block text-sm font-medium mb-2">Мова розпізнавання:</label>
+                    <select id="language-select" class="w-full p-2 border rounded">
+                        <option value="uk-UA">Українська</option>
+                        <option value="en-US">English</option>
+                        <option value="ru-RU">Русский</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium mb-2">Голос:</label>
+                    <select id="voice-select" class="w-full p-2 border rounded">
+                        <option>Завантаження...</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-3 gap-4 mb-4">
+                <div>
+                    <label class="block text-sm font-medium mb-2">Швидкість:</label>
+                    <input type="range" id="rate-slider" min="0.5" max="2" step="0.1" value="1" class="w-full">
+                    <span id="rate-value" class="text-sm text-gray-600">1.0</span>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium mb-2">Тон:</label>
+                    <input type="range" id="pitch-slider" min="0" max="2" step="0.1" value="1" class="w-full">
+                    <span id="pitch-value" class="text-sm text-gray-600">1.0</span>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium mb-2">Гучність:</label>
+                    <input type="range" id="volume-slider" min="0" max="1" step="0.1" value="1" class="w-full">
+                    <span id="volume-value" class="text-sm text-gray-600">1.0</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4">Синтез мови (Text-to-Speech)</h2>
+            
+            <textarea id="text-to-speak" class="w-full p-3 border rounded mb-4" rows="3" 
+                      placeholder="Введіть текст для озвучування...">Привіт! Це тест голосових функцій для гри в слова.</textarea>
+            
+            <div class="flex gap-2">
+                <button id="speak-btn" class="btn bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                    🔊 Озвучити
+                </button>
+                <button id="stop-speech-btn" class="btn bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">
+                    ⏹️ Зупинити
+                </button>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4">Розпізнавання мови (Speech-to-Text)</h2>
+            
+            <div class="mb-4">
+                <button id="listen-btn" class="btn bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
+                    🎤 Почати слухати
+                </button>
+                <span id="listening-status" class="ml-4 text-sm text-gray-600"></span>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-sm font-medium mb-2">Розпізнаний текст:</label>
+                <textarea id="recognized-text" class="w-full p-3 border rounded bg-gray-50" rows="3" readonly></textarea>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4">Ігрові команди</h2>
+            
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <button id="demo-word-btn" class="btn bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600">
+                    📢 Оголосити слово
+                </button>
+                <button id="demo-hint-btn" class="btn bg-orange-500 text-white px-4 py-2 rounded hover:bg-orange-600">
+                    💡 Дати підказку
+                </button>
+                <button id="demo-score-btn" class="btn bg-teal-500 text-white px-4 py-2 rounded hover:bg-teal-600">
+                    🎯 Оголосити рахунок
+                </button>
+                <button id="demo-time-btn" class="btn bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600">
+                    ⏰ Попередити про час
+                </button>
+            </div>
+            
+            <div class="text-sm text-gray-600 p-3 bg-gray-50 rounded">
+                <strong>Голосові команди для тестування:</strong><br>
+                🔸 "правильно" / "correct" - позначити як правильну відповідь<br>
+                🔸 "пропустити" / "skip" - пропустити слово<br>
+                🔸 "підказка" / "hint" - отримати підказку<br>
+                🔸 "повтори" / "repeat" - повторити слово<br>
+                🔸 "стоп" / "stop" - зупинити гру
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-xl font-semibold mb-4">Журнал подій</h2>
+            <div id="event-log" class="bg-gray-50 p-3 rounded h-40 overflow-y-auto text-sm font-mono"></div>
+            <button id="clear-log-btn" class="btn bg-gray-500 text-white px-3 py-1 rounded mt-2 text-sm">
+                Очистити журнал
+            </button>
+        </div>
+    </div>
+
+    <!-- Include speech functionality -->
+    <script src="env-config.js"></script>
+    <script src="localization.js"></script>
+    <script src="speech.js"></script>
+    
+    <script>
+        // Demo functionality
+        let testSpeechManager = null;
+        
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Initialize speech manager
+            testSpeechManager = new SpeechManager();
+            await testSpeechManager.init();
+            
+            // Populate voice selector
+            populateVoiceSelector();
+            setupEventListeners();
+            
+            log('Тест голосових функцій ініціалізовано');
+        });
+        
+        function populateVoiceSelector() {
+            const voiceSelect = document.getElementById('voice-select');
+            const voices = testSpeechManager.getAvailableVoices();
+            
+            voiceSelect.innerHTML = '';
+            voices.forEach(voice => {
+                const option = document.createElement('option');
+                option.value = voice.name;
+                option.textContent = `${voice.name} (${voice.lang})`;
+                voiceSelect.appendChild(option);
+            });
+        }
+        
+        function setupEventListeners() {
+            // Language change
+            document.getElementById('language-select').addEventListener('change', (e) => {
+                testSpeechManager.language = e.target.value;
+                if (testSpeechManager.recognition) {
+                    testSpeechManager.recognition.lang = e.target.value;
+                }
+                log(`Мову змінено на: ${e.target.value}`);
+            });
+            
+            // Voice change
+            document.getElementById('voice-select').addEventListener('change', (e) => {
+                testSpeechManager.setVoice(e.target.value);
+                log(`Голос змінено на: ${e.target.value}`);
+            });
+            
+            // Settings sliders
+            document.getElementById('rate-slider').addEventListener('input', (e) => {
+                const value = parseFloat(e.target.value);
+                testSpeechManager.settings.speechRate = value;
+                document.getElementById('rate-value').textContent = value.toFixed(1);
+            });
+            
+            document.getElementById('pitch-slider').addEventListener('input', (e) => {
+                const value = parseFloat(e.target.value);
+                testSpeechManager.settings.speechPitch = value;
+                document.getElementById('pitch-value').textContent = value.toFixed(1);
+            });
+            
+            document.getElementById('volume-slider').addEventListener('input', (e) => {
+                const value = parseFloat(e.target.value);
+                testSpeechManager.settings.speechVolume = value;
+                document.getElementById('volume-value').textContent = value.toFixed(1);
+            });
+            
+            // Text-to-Speech buttons
+            document.getElementById('speak-btn').addEventListener('click', () => {
+                const text = document.getElementById('text-to-speak').value;
+                if (text.trim()) {
+                    testSpeechManager.speak(text);
+                    log(`Озвучування: "${text}"`);
+                }
+            });
+            
+            document.getElementById('stop-speech-btn').addEventListener('click', () => {
+                testSpeechManager.stopSpeaking();
+                log('Озвучування зупинено');
+            });
+            
+            // Speech-to-Text button
+            document.getElementById('listen-btn').addEventListener('click', () => {
+                if (testSpeechManager.isListening) {
+                    testSpeechManager.stopListening();
+                } else {
+                    const started = testSpeechManager.startListening();
+                    if (started) {
+                        log('Почато слухання...');
+                    } else {
+                        log('Не вдалося почати слухання');
+                    }
+                }
+            });
+            
+            // Demo buttons
+            document.getElementById('demo-word-btn').addEventListener('click', () => {
+                testSpeechManager.announceWord('КОТИК');
+            });
+            
+            document.getElementById('demo-hint-btn').addEventListener('click', () => {
+                testSpeechManager.announceHint('Підказка: перша літера "К", всього 5 літер');
+            });
+            
+            document.getElementById('demo-score-btn').addEventListener('click', () => {
+                testSpeechManager.announceScore('15');
+            });
+            
+            document.getElementById('demo-time-btn').addEventListener('click', () => {
+                testSpeechManager.announceTimeWarning(10);
+            });
+            
+            // Clear log
+            document.getElementById('clear-log-btn').addEventListener('click', () => {
+                document.getElementById('event-log').innerHTML = '';
+            });
+            
+            // Speech events
+            window.addEventListener('voiceCommand', (e) => {
+                log(`Голосова команда: ${e.detail.action}`, 'green');
+            });
+            
+            window.addEventListener('speechAnswer', (e) => {
+                document.getElementById('recognized-text').value = e.detail.answer;
+                log(`Розпізнана відповідь: "${e.detail.answer}"`, 'blue');
+            });
+        }
+        
+        function log(message, color = 'black') {
+            const eventLog = document.getElementById('event-log');
+            const time = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.style.color = color;
+            logEntry.textContent = `[${time}] ${message}`;
+            eventLog.appendChild(logEntry);
+            eventLog.scrollTop = eventLog.scrollHeight;
+        }
+        
+        // Override speech manager event handlers for demo
+        if (window.SpeechManager) {
+            const originalInit = SpeechManager.prototype.init;
+            SpeechManager.prototype.init = async function() {
+                await originalInit.call(this);
+                
+                // Override event handlers for demo
+                this.onListeningStart = () => {
+                    document.getElementById('listening-status').textContent = '🔴 Слухаю...';
+                    document.getElementById('listen-btn').textContent = '⏹️ Зупинити';
+                    log('Початок слухання', 'orange');
+                };
+                
+                this.onListeningEnd = () => {
+                    document.getElementById('listening-status').textContent = '';
+                    document.getElementById('listen-btn').textContent = '🎤 Почати слухати';
+                    log('Кінець слухання', 'orange');
+                };
+                
+                this.onSpeechResult = (transcript) => {
+                    log(`Розпізнано: "${transcript}"`, 'green');
+                    
+                    // Process as voice command
+                    const command = this.processVoiceCommand(transcript);
+                    
+                    if (!command) {
+                        // If not a command, treat as answer attempt
+                        const event = new CustomEvent('speechAnswer', { detail: { answer: transcript } });
+                        window.dispatchEvent(event);
+                    }
+                };
+                
+                this.onSpeechError = (error) => {
+                    log(`Помилка розпізнавання: ${error}`, 'red');
+                };
+                
+                this.onSpeechStart = (text) => {
+                    log(`Початок озвучування: "${text}"`, 'purple');
+                };
+                
+                this.onSpeechEnd = (text) => {
+                    log(`Кінець озвучування: "${text}"`, 'purple');
+                };
+            };
+        }
+    </script>
+</body>
+</html>

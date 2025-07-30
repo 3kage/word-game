@@ -175,6 +175,135 @@ class WordGame {
         if (settingsButton) settingsButton.addEventListener('click', () => this.showSettings());
         if (shareButton) shareButton.addEventListener('click', () => this.shareBot());
         if (donateScreenBtn) donateScreenBtn.addEventListener('click', () => this.showDonate());
+
+        // Setup speech integration
+        this.setupSpeechIntegration();
+    }
+
+    setupSpeechIntegration() {
+        // Listen for voice commands
+        window.addEventListener('voiceCommand', (event) => {
+            this.handleVoiceCommand(event.detail.action);
+        });
+
+        // Listen for speech answers
+        window.addEventListener('speechAnswer', (event) => {
+            this.handleSpeechAnswer(event.detail.answer);
+        });
+    }
+
+    handleVoiceCommand(action) {
+        if (!this.gameState.isGameActive) return;
+
+        switch (action) {
+            case 'correct':
+                this.markAsGuessed();
+                break;
+            case 'skip':
+                this.skipWord();
+                break;
+            case 'hint':
+                this.showHint();
+                break;
+            case 'repeat':
+                this.repeatCurrentWord();
+                break;
+            case 'stop':
+                this.endRound();
+                break;
+        }
+    }
+
+    markAsGuessed() {
+        this.handleCorrectGuess();
+    }
+
+    skipWord() {
+        this.handleSkip();
+    }
+
+    showHint() {
+        const currentWord = document.getElementById('word-to-guess').textContent;
+        if (!currentWord || currentWord === "Слова скінчились!") return;
+
+        // Create a hint (first letter + number of remaining letters)
+        const hint = currentWord.charAt(0) + '...';
+        const letterCount = currentWord.length;
+        
+        const hintMessage = window.t ? 
+            window.t('speech.hint_format', { hint, count: letterCount }) : 
+            `Підказка: перша літера "${hint}", всього ${letterCount} літер`;
+
+        if (window.speechManager) {
+            window.speechManager.announceHint(hintMessage);
+        }
+
+        // Show visual hint
+        if (window.gameNotifications) {
+            window.gameNotifications.showInfo(hintMessage);
+        }
+    }
+
+    toggleVoiceListening() {
+        if (!window.speechManager) {
+            this.showError('Голосове керування недоступне');
+            return;
+        }
+
+        const listenBtn = document.getElementById('voice-listen-btn');
+        
+        if (window.speechManager.isListening) {
+            window.speechManager.stopListening();
+            if (listenBtn) {
+                listenBtn.innerHTML = '<span class="text-xs">🎤</span>';
+                listenBtn.classList.remove('bg-red-500', 'hover:bg-red-600');
+                listenBtn.classList.add('bg-blue-500', 'hover:bg-blue-600');
+            }
+        } else {
+            const started = window.speechManager.startListening();
+            if (started && listenBtn) {
+                listenBtn.innerHTML = '<span class="text-xs">⏹️</span>';
+                listenBtn.classList.remove('bg-blue-500', 'hover:bg-blue-600');
+                listenBtn.classList.add('bg-red-500', 'hover:bg-red-600');
+            }
+        }
+    }
+
+    handleSpeechAnswer(answer) {
+        if (!this.gameState.isGameActive) return;
+        
+        // Check if speech answer matches current word
+        const currentWord = this.gameState.words[0]?.word;
+        if (!currentWord) return;
+
+        // Normalize both strings for comparison
+        const normalizedAnswer = this.normalizeText(answer);
+        const normalizedWord = this.normalizeText(currentWord);
+
+        if (normalizedAnswer === normalizedWord) {
+            this.markAsGuessed();
+            
+            // Announce correct answer
+            if (window.speechManager) {
+                const message = window.t ? 
+                    window.t('speech.correct_answer') : 
+                    'Правильно!';
+                window.speechManager.speak(message);
+            }
+        }
+    }
+
+    normalizeText(text) {
+        return text.toLowerCase()
+            .replace(/[^а-яіїєґa-z0-9]/g, '')
+            .trim();
+    }
+
+    repeatCurrentWord() {
+        const currentWord = this.gameState.words[0]?.word;
+        if (currentWord && window.speechManager) {
+            window.speechManager.announceWord(currentWord);
+        }
     }
 
     async populateDictionaries() {
@@ -417,6 +546,27 @@ class WordGame {
                     <button id="skip-button" class="btn btn-secondary" 
                             aria-label="Пропустити це слово">Пропустити</button>
                 </div>
+                <!-- Speech Control Panel -->
+                <div id="speech-controls" class="mt-4 p-3 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                    <h4 class="text-sm font-semibold text-gray-700 mb-2 text-center">🎤 Голосове керування</h4>
+                    <div class="grid grid-cols-3 gap-2 mb-3">
+                        <button id="voice-listen-btn" class="btn btn-sm bg-blue-500 text-white hover:bg-blue-600" 
+                                aria-label="Почати слухати голосові команди">
+                            <span class="text-xs">🎤</span>
+                        </button>
+                        <button id="voice-repeat-btn" class="btn btn-sm bg-purple-500 text-white hover:bg-purple-600" 
+                                aria-label="Повторити слово">
+                            <span class="text-xs">🔄</span>
+                        </button>
+                        <button id="voice-hint-btn" class="btn btn-sm bg-orange-500 text-white hover:bg-orange-600" 
+                                aria-label="Отримати підказку">
+                            <span class="text-xs">💡</span>
+                        </button>
+                    </div>
+                    <div class="text-xs text-gray-600 text-center leading-tight">
+                        Голосові команди: "правильно", "пропустити", "підказка", "повтори"
+                    </div>
+                </div>
             </div>
         `;
 
@@ -431,6 +581,21 @@ class WordGame {
         if (exitBtn) exitBtn.addEventListener('click', () => this.backToStart());
         if (correctBtn) correctBtn.addEventListener('click', () => this.handleCorrectGuess());
         if (skipBtn) skipBtn.addEventListener('click', () => this.handleSkip());
+
+        // Speech control buttons
+        const voiceListenBtn = document.getElementById('voice-listen-btn');
+        const voiceRepeatBtn = document.getElementById('voice-repeat-btn');
+        const voiceHintBtn = document.getElementById('voice-hint-btn');
+
+        if (voiceListenBtn) {
+            voiceListenBtn.addEventListener('click', () => this.toggleVoiceListening());
+        }
+        if (voiceRepeatBtn) {
+            voiceRepeatBtn.addEventListener('click', () => this.repeatCurrentWord());
+        }
+        if (voiceHintBtn) {
+            voiceHintBtn.addEventListener('click', () => this.showHint());
+        }
 
         // Add keyboard support for game controls
         this.gameKeyboardHandler = (e) => {
@@ -546,6 +711,14 @@ class WordGame {
                     streakIndicator.setAttribute('aria-live', 'polite');
                     setTimeout(() => streakIndicator.textContent = '', 2000);
                 }
+
+                // Announce streak bonus via speech
+                if (window.speechManager) {
+                    const message = window.t ? 
+                        window.t('speech.streak_bonus', { streak: this.gameState.currentStreak }) : 
+                        `Серія ${this.gameState.currentStreak}! Бонус!`;
+                    window.speechManager.speak(message);
+                }
             }
         }
         
@@ -596,9 +769,20 @@ class WordGame {
             timer--;
             if (timerDisplay) timerDisplay.textContent = timer;
             
+            // Voice time warnings
+            if (window.speechManager && (timer === 30 || timer === 10 || timer === 5)) {
+                window.speechManager.announceTimeWarning(timer);
+            }
+            
             if (timer <= 0) {
                 this.playSound('endRound');
                 this.clearTimer();
+                
+                // Announce game end
+                if (window.speechManager) {
+                    window.speechManager.announceGameEnd({ won: false });
+                }
+                
                 this.showRoundSummary();
             }
         }, 1000);
@@ -625,8 +809,14 @@ class WordGame {
         }
         
         const randomIndex = Math.floor(Math.random() * this.gameState.availableWords.length);
-        wordToGuessDisplay.textContent = this.gameState.availableWords[randomIndex];
+        const newWord = this.gameState.availableWords[randomIndex];
+        wordToGuessDisplay.textContent = newWord;
         this.gameState.availableWords.splice(randomIndex, 1);
+
+        // Announce new word via speech
+        if (window.speechManager) {
+            window.speechManager.announceWord(newWord);
+        }
     }
 
     showRoundSummary() {

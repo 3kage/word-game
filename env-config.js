@@ -14,7 +14,19 @@ class EnvironmentConfig {
             'PAYMENT_PROVIDER_TOKEN': 'PAYMENT_TOKEN_NOT_CONFIGURED',
             'PAYMENT_CURRENCY': 'USDT',
             'GAME_ENVIRONMENT': 'production',
-            'DEBUG_MODE': 'false'
+            'DEBUG_MODE': 'false',
+            'AI_FEATURES_ENABLED': 'true',
+            'AI_COMPLEXITY_LEVEL': '1',
+            'WEBSOCKET_URL': 'ws://localhost:3001',
+            'SPEECH_API_ENABLED': 'true',
+            'SPEECH_LANGUAGE': 'uk-UA',
+            'MULTIPLAYER_ENABLED': 'true',
+            'PREMIUM_FEATURES_ENABLED': 'false',
+            'ADS_ENABLED': 'false',
+            'ANALYTICS_ENDPOINT': '',
+            'TOURNAMENT_MODE_ENABLED': 'false',
+            'LOCALIZATION_ENABLED': 'true',
+            'DEFAULT_LANGUAGE': 'uk'
         };
 
         // Load defaults first
@@ -104,6 +116,52 @@ class EnvironmentConfig {
 
     getAIComplexityLevel() {
         return parseInt(this.get('AI_COMPLEXITY_LEVEL') || '1', 10);
+    }
+
+    // Multiplayer configuration
+    isMultiplayerEnabled() {
+        return this.get('MULTIPLAYER_ENABLED') === 'true';
+    }
+
+    getWebSocketURL() {
+        return this.get('WEBSOCKET_URL') || 'ws://localhost:3001';
+    }
+
+    // Speech API configuration
+    isSpeechAPIEnabled() {
+        return this.get('SPEECH_API_ENABLED') === 'true';
+    }
+
+    getSpeechLanguage() {
+        return this.get('SPEECH_LANGUAGE') || 'uk-UA';
+    }
+
+    // Premium features
+    isPremiumEnabled() {
+        return this.get('PREMIUM_FEATURES_ENABLED') === 'true';
+    }
+
+    isAdsEnabled() {
+        return this.get('ADS_ENABLED') === 'true';
+    }
+
+    // Tournament mode
+    isTournamentModeEnabled() {
+        return this.get('TOURNAMENT_MODE_ENABLED') === 'true';
+    }
+
+    // Localization
+    isLocalizationEnabled() {
+        return this.get('LOCALIZATION_ENABLED') === 'true';
+    }
+
+    getDefaultLanguage() {
+        return this.get('DEFAULT_LANGUAGE') || 'uk';
+    }
+
+    // Analytics
+    getAnalyticsEndpoint() {
+        return this.get('ANALYTICS_ENDPOINT');
     }
 }
 
