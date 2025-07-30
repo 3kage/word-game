@@ -180,8 +180,8 @@ class WordGame {
         const createRoomBtn = document.getElementById('create-room-btn');
         const joinRoomBtn = document.getElementById('join-room-btn');
 
-        if (createRoomBtn) createRoomBtn.addEventListener('click', () => this.showCreateRoom());
-        if (joinRoomBtn) joinRoomBtn.addEventListener('click', () => this.showJoinRoom());
+        if (createRoomBtn) createRoomBtn.addEventListener('click', () => this.showFreeMultiplayer('create'));
+        if (joinRoomBtn) joinRoomBtn.addEventListener('click', () => this.showFreeMultiplayer('join'));
 
         // Setup speech integration
         this.setupSpeechIntegration();
@@ -1517,6 +1517,99 @@ class WordGame {
             this.showSuccess(GameConfig.MESSAGES.GAME_SHARED);
         } catch (error) {
             this.showError('Помилка поділу гри: ' + error.message);
+        }
+    }
+
+    // Показати безкоштовний мультиплеєр
+    showFreeMultiplayer(mode = 'menu') {
+        try {
+            console.log('🎮 Opening free multiplayer:', mode);
+            
+            // Ховаємо головний екран
+            const startScreen = document.getElementById('start-screen');
+            if (startScreen) {
+                startScreen.style.display = 'none';
+            }
+            
+            // Показуємо контейнер мультиплеєра
+            const multiplayerContainer = document.getElementById('multiplayer-container');
+            if (multiplayerContainer) {
+                multiplayerContainer.style.display = 'block';
+                
+                // Перевіряємо, чи ініціалізований адаптер
+                if (window.telegramMultiplayer) {
+                    switch (mode) {
+                        case 'create':
+                            window.telegramMultiplayer.createRoom();
+                            break;
+                        case 'join':
+                            window.telegramMultiplayer.showMultiplayerMenu();
+                            break;
+                        default:
+                            window.telegramMultiplayer.showMultiplayerMenu();
+                    }
+                } else {
+                    // Показуємо базове меню
+                    multiplayerContainer.innerHTML = `
+                        <div class="multiplayer-menu">
+                            <h2>🎮 Мультиплеєр</h2>
+                            <p>⏳ Ініціалізація...</p>
+                            <button onclick="window.wordGame.backToMainMenu()" class="btn btn-secondary">
+                                ← Назад
+                            </button>
+                        </div>
+                    `;
+                }
+            }
+            
+            // Додаємо кнопку "Назад" до всіх екранів мультиплеєра
+            this.addBackButtonToMultiplayer();
+            
+        } catch (error) {
+            console.error('❌ Failed to show free multiplayer:', error);
+            this.showAlert('Помилка відкриття мультиплеєра');
+            this.backToMainMenu();
+        }
+    }
+
+    // Додати кнопку "Назад" до мультиплеєра
+    addBackButtonToMultiplayer() {
+        setTimeout(() => {
+            const multiplayerContainer = document.getElementById('multiplayer-container');
+            if (multiplayerContainer && !multiplayerContainer.querySelector('.back-to-menu')) {
+                const backButton = document.createElement('button');
+                backButton.className = 'btn btn-secondary back-to-menu';
+                backButton.innerHTML = '← Назад до меню';
+                backButton.style.marginTop = '20px';
+                backButton.onclick = () => this.backToMainMenu();
+                
+                multiplayerContainer.appendChild(backButton);
+            }
+        }, 500);
+    }
+
+    // Повернутися до головного меню
+    backToMainMenu() {
+        try {
+            // Ховаємо контейнер мультиплеєра
+            const multiplayerContainer = document.getElementById('multiplayer-container');
+            if (multiplayerContainer) {
+                multiplayerContainer.style.display = 'none';
+            }
+            
+            // Показуємо головний екран
+            const startScreen = document.getElementById('start-screen');
+            if (startScreen) {
+                startScreen.style.display = 'block';
+            }
+            
+            // Очищуємо стан мультиплеєра якщо потрібно
+            if (window.telegramMultiplayer && window.telegramMultiplayer.isConnected()) {
+                window.telegramMultiplayer.leaveRoom();
+            }
+            
+        } catch (error) {
+            console.error('❌ Error returning to main menu:', error);
         }
     }
 }
