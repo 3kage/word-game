@@ -1,18 +1,16 @@
 // Firebase Configuration and Setup
 class FirebaseConfig {
     static getConfig() {
-        // ⚠️ ВАЖЛИВО: Замініть на ваші справжні Firebase налаштування
-        // Отримайте їх в Firebase Console: https://console.firebase.google.com
+        // Конфігурація для браузера (без process.env)
         return {
-            // Ваша конфігурація для проекту word-bot-ua
-            apiKey: process.env.FIREBASE_API_KEY || "AIzaSyDT_5CQ_NrbmGKuYiXjJs_2uSw62fVK4QY",
-            authDomain: process.env.FIREBASE_AUTH_DOMAIN || "word-bot-ua.firebaseapp.com",
-            databaseURL: process.env.FIREBASE_DATABASE_URL || "https://word-bot-ua-default-rtdb.europe-west1.firebasedatabase.app",
-            projectId: process.env.FIREBASE_PROJECT_ID || "word-bot-ua",
-            storageBucket: process.env.FIREBASE_STORAGE_BUCKET || "word-bot-ua.firebasestorage.app",
-            messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID || "1043590586166",
-            appId: process.env.FIREBASE_APP_ID || "1:1043590586166:web:5a461a3f61ef5d2db3d4c7",
-            measurementId: process.env.FIREBASE_MEASUREMENT_ID || "G-TMBHNXWKDK"
+            apiKey: "AIzaSyDT_5CQ_NrbmGKuYiXjJs_2uSw62fVK4QY",
+            authDomain: "word-bot-ua.firebaseapp.com",
+            databaseURL: "https://word-bot-ua-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "word-bot-ua",
+            storageBucket: "word-bot-ua.firebasestorage.app",
+            messagingSenderId: "1043590586166",
+            appId: "1:1043590586166:web:5a461a3f61ef5d2db3d4c7",
+            measurementId: "G-TMBHNXWKDK"
         };
     }
 
