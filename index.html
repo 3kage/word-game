@@ -98,6 +98,23 @@
     <script src="multiplayer-telegram-adapter.js"></script>
     <script src="multiplayer-telegram-free.js"></script>
     <script src="multiplayer-telegram-free-adapter.js"></script>
+    
+    <!-- Firebase SDK (conditionally loaded) -->
+    <script>
+        // Load Firebase only if enabled
+        if (typeof window !== 'undefined' && window.EnvironmentConfig?.isFirebaseEnabled()) {
+            document.write('<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"><\/script>');
+            document.write('<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"><\/script>');
+            document.write('<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"><\/script>');
+        }
+    </script>
+    
+    <!-- Firebase Scripts -->
+    <script src="firebase-config.js"></script>
+    <script src="firebase-multiplayer.js"></script>
+    <script src="firebase-multiplayer-ui.js"></script>
+    <script src="firebase-game-integration.js"></script>
+    
     <script src="speech.js"></script>
     <script src="enhancements.js"></script>
     <script src="analytics.js"></script>

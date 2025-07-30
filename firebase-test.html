@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔥 Firebase Test - word-bot-ua</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .header h1 {
+            margin: 0;
+            color: #2D3748;
+            font-size: 2rem;
+            font-weight: 800;
+        }
+
+        .status {
+            padding: 16px;
+            border-radius: 8px;
+            margin: 16px 0;
+            font-weight: 600;
+        }
+
+        .status.success {
+            background: #C6F6D5;
+            color: #276749;
+            border-left: 4px solid #38A169;
+        }
+
+        .status.error {
+            background: #FED7D7;
+            color: #C53030;
+            border-left: 4px solid #E53E3E;
+        }
+
+        .status.info {
+            background: #BEE3F8;
+            color: #2B6CB0;
+            border-left: 4px solid #3182CE;
+        }
+
+        .test-section {
+            margin: 24px 0;
+            padding: 20px;
+            background: #F7FAFC;
+            border-radius: 12px;
+        }
+
+        .test-section h3 {
+            margin: 0 0 16px 0;
+            color: #2D3748;
+        }
+
+        .btn {
+            background: #4299E1;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            margin: 4px;
+            transition: background 0.2s;
+        }
+
+        .btn:hover {
+            background: #3182CE;
+        }
+
+        .btn:disabled {
+            background: #A0AEC0;
+            cursor: not-allowed;
+        }
+
+        .input {
+            padding: 12px;
+            border: 2px solid #E2E8F0;
+            border-radius: 8px;
+            width: 200px;
+            margin: 8px;
+        }
+
+        .log {
+            background: #1A202C;
+            color: #E2E8F0;
+            padding: 16px;
+            border-radius: 8px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+        }
+
+        #firebase-multiplayer-container {
+            margin: 24px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>🔥 Firebase Test</h1>
+            <p>Тестування Firebase для проекту word-bot-ua</p>
+        </header>
+
+        <div id="status-container">
+            <div id="firebase-status" class="status info">
+                ⏳ Ініціалізація Firebase...
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>🔧 Конфігурація</h3>
+            <div id="config-info">
+                <p><strong>Project ID:</strong> word-bot-ua</p>
+                <p><strong>Database URL:</strong> https://word-bot-ua-default-rtdb.europe-west1.firebasedatabase.app</p>
+                <p><strong>Region:</strong> Europe West 1 (Бельгія)</p>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>🧪 Тести з'єднання</h3>
+            <button id="test-connection" class="btn">Тест з'єднання</button>
+            <button id="test-auth" class="btn">Тест авторизації</button>
+            <button id="test-database" class="btn">Тест бази даних</button>
+        </div>
+
+        <div class="test-section">
+            <h3>🎮 Тест мультиплеєра</h3>
+            <div>
+                <input type="text" id="player-name" class="input" placeholder="Ваше ім'я" value="Тестер">
+                <button id="create-room" class="btn">Створити кімнату</button>
+            </div>
+            <div>
+                <input type="text" id="room-code" class="input" placeholder="Код кімнати" maxlength="6">
+                <button id="join-room" class="btn">Приєднатися</button>
+            </div>
+            <div>
+                <button id="leave-room" class="btn" disabled>Покинути кімнату</button>
+            </div>
+        </div>
+
+        <!-- Firebase UI буде тут -->
+        <div id="firebase-multiplayer-container"></div>
+
+        <div class="test-section">
+            <h3>📋 Лог подій</h3>
+            <div id="log" class="log">Firebase test started...\n</div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
+    <!-- Environment Config -->
+    <script src="env-config.js"></script>
+
+    <!-- Firebase Scripts -->
+    <script src="firebase-config.js"></script>
+    <script src="firebase-multiplayer.js"></script>
+    <script src="firebase-multiplayer-ui.js"></script>
+
+    <script>
+        let firebaseManager = null;
+        let currentRoom = null;
+
+        function log(message) {
+            const logEl = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            logEl.textContent += `[${timestamp}] ${message}\n`;
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        function updateStatus(message, type = 'info') {
+            const statusEl = document.getElementById('firebase-status');
+            statusEl.textContent = message;
+            statusEl.className = `status ${type}`;
+        }
+
+        async function testConnection() {
+            try {
+                log('Testing Firebase connection...');
+                
+                if (typeof firebase === 'undefined') {
+                    throw new Error('Firebase SDK not loaded');
+                }
+
+                const config = FirebaseConfig.getConfig();
+                log(`Using project: ${config.projectId}`);
+                log(`Database URL: ${config.databaseURL}`);
+
+                // Test database connection
+                const connectedRef = firebase.database().ref('.info/connected');
+                connectedRef.once('value', (snapshot) => {
+                    if (snapshot.val() === true) {
+                        log('✅ Firebase database connection successful');
+                        updateStatus('✅ Firebase підключено успішно', 'success');
+                    } else {
+                        log('❌ Firebase database connection failed');
+                        updateStatus('❌ Помилка підключення до Firebase', 'error');
+                    }
+                });
+
+            } catch (error) {
+                log(`❌ Connection test failed: ${error.message}`);
+                updateStatus(`❌ Помилка: ${error.message}`, 'error');
+            }
+        }
+
+        async function testAuth() {
+            try {
+                log('Testing Firebase authentication...');
+                
+                const auth = firebase.auth();
+                const userCredential = await auth.signInAnonymously();
+                
+                log(`✅ Anonymous auth successful: ${userCredential.user.uid}`);
+                updateStatus('✅ Авторизація успішна', 'success');
+                
+            } catch (error) {
+                log(`❌ Auth test failed: ${error.message}`);
+                updateStatus(`❌ Помилка авторизації: ${error.message}`, 'error');
+            }
+        }
+
+        async function testDatabase() {
+            try {
+                log('Testing database write/read...');
+                
+                const testRef = firebase.database().ref('test/connection');
+                const testData = {
+                    timestamp: Date.now(),
+                    message: 'Firebase test successful'
+                };
+                
+                await testRef.set(testData);
+                log('✅ Database write successful');
+                
+                const snapshot = await testRef.once('value');
+                const data = snapshot.val();
+                
+                if (data && data.message === testData.message) {
+                    log('✅ Database read successful');
+                    updateStatus('✅ База даних працює', 'success');
+                } else {
+                    throw new Error('Data verification failed');
+                }
+                
+                // Clean up test data
+                await testRef.remove();
+                log('✅ Test data cleaned up');
+                
+            } catch (error) {
+                log(`❌ Database test failed: ${error.message}`);
+                updateStatus(`❌ Помилка бази даних: ${error.message}`, 'error');
+            }
+        }
+
+        async function createRoom() {
+            try {
+                if (!firebaseManager) {
+                    firebaseManager = new FirebaseMultiplayerManager();
+                    await new Promise(resolve => {
+                        firebaseManager.on('initialized', resolve);
+                    });
+                }
+
+                const playerName = document.getElementById('player-name').value || 'Тестер';
+                firebaseManager.setPlayerName(playerName);
+
+                const roomCode = await firebaseManager.createRoom({
+                    gameMode: 'test',
+                    roundDuration: 60
+                });
+
+                currentRoom = roomCode;
+                document.getElementById('room-code').value = roomCode;
+                document.getElementById('leave-room').disabled = false;
+
+                log(`✅ Room created: ${roomCode}`);
+                updateStatus(`✅ Кімнату створено: ${roomCode}`, 'success');
+
+            } catch (error) {
+                log(`❌ Create room failed: ${error.message}`);
+                updateStatus(`❌ Помилка створення кімнати: ${error.message}`, 'error');
+            }
+        }
+
+        async function joinRoom() {
+            try {
+                const roomCode = document.getElementById('room-code').value.trim().toUpperCase();
+                if (!roomCode) {
+                    throw new Error('Enter room code');
+                }
+
+                if (!firebaseManager) {
+                    firebaseManager = new FirebaseMultiplayerManager();
+                    await new Promise(resolve => {
+                        firebaseManager.on('initialized', resolve);
+                    });
+                }
+
+                const playerName = document.getElementById('player-name').value || 'Тестер';
+                firebaseManager.setPlayerName(playerName);
+
+                await firebaseManager.joinRoom(roomCode);
+                
+                currentRoom = roomCode;
+                document.getElementById('leave-room').disabled = false;
+
+                log(`✅ Joined room: ${roomCode}`);
+                updateStatus(`✅ Приєднались до кімнати: ${roomCode}`, 'success');
+
+            } catch (error) {
+                log(`❌ Join room failed: ${error.message}`);
+                updateStatus(`❌ Помилка приєднання: ${error.message}`, 'error');
+            }
+        }
+
+        async function leaveRoom() {
+            try {
+                if (!firebaseManager || !currentRoom) return;
+
+                await firebaseManager.leaveRoom();
+                
+                currentRoom = null;
+                document.getElementById('room-code').value = '';
+                document.getElementById('leave-room').disabled = true;
+
+                log(`✅ Left room`);
+                updateStatus('✅ Покинули кімнату', 'success');
+
+            } catch (error) {
+                log(`❌ Leave room failed: ${error.message}`);
+                updateStatus(`❌ Помилка виходу з кімнати: ${error.message}`, 'error');
+            }
+        }
+
+        // Event listeners
+        document.getElementById('test-connection').addEventListener('click', testConnection);
+        document.getElementById('test-auth').addEventListener('click', testAuth);
+        document.getElementById('test-database').addEventListener('click', testDatabase);
+        document.getElementById('create-room').addEventListener('click', createRoom);
+        document.getElementById('join-room').addEventListener('click', joinRoom);
+        document.getElementById('leave-room').addEventListener('click', leaveRoom);
+
+        // Auto test on load
+        window.addEventListener('load', () => {
+            log('Page loaded, starting auto tests...');
+            
+            setTimeout(() => {
+                testConnection();
+            }, 1000);
+
+            setTimeout(() => {
+                testAuth();
+            }, 2000);
+
+            setTimeout(() => {
+                testDatabase();
+            }, 3000);
+        });
+
+        // Firebase manager events
+        document.addEventListener('DOMContentLoaded', () => {
+            if (typeof FirebaseMultiplayerManager !== 'undefined') {
+                log('FirebaseMultiplayerManager available');
+                
+                // Можемо створити UI
+                if (typeof FirebaseMultiplayerUI !== 'undefined') {
+                    log('Creating Firebase UI...');
+                    setTimeout(() => {
+                        new FirebaseMultiplayerUI();
+                    }, 1000);
+                }
+            }
+        });
+    </script>
+</body>
+</html>

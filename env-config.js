@@ -18,7 +18,7 @@ class EnvironmentConfig {
             'DEBUG_MODE': 'true',
             'AI_FEATURES_ENABLED': 'true',
             'AI_COMPLEXITY_LEVEL': '1',
-            'MULTIPLAYER_MODE': 'telegram',  // 'websocket' or 'telegram'
+            'MULTIPLAYER_MODE': 'firebase',  // 'websocket', 'telegram', or 'firebase'
             'WEBSOCKET_URL': 'ws://localhost:3001',
             'TELEGRAM_API_URL': 'https://api.telegram.org/bot',
             'GITHUB_API_URL': 'https://api.github.com',
@@ -27,6 +27,14 @@ class EnvironmentConfig {
             'SPEECH_API_ENABLED': 'true',
             'SPEECH_LANGUAGE': 'uk-UA',
             'MULTIPLAYER_ENABLED': 'true',
+            'FIREBASE_ENABLED': 'true',
+            'FIREBASE_API_KEY': '',
+            'FIREBASE_AUTH_DOMAIN': '',
+            'FIREBASE_DATABASE_URL': '',
+            'FIREBASE_PROJECT_ID': '',
+            'FIREBASE_STORAGE_BUCKET': '',
+            'FIREBASE_MESSAGING_SENDER_ID': '',
+            'FIREBASE_APP_ID': '',
             'PREMIUM_FEATURES_ENABLED': 'false',
             'ADS_ENABLED': 'false',
             'ANALYTICS_ENDPOINT': '',
@@ -135,6 +143,32 @@ class EnvironmentConfig {
 
     getWebSocketURL() {
         return this.get('WEBSOCKET_URL') || 'ws://localhost:3001';
+    }
+
+    // Firebase configuration
+    isFirebaseEnabled() {
+        return this.get('FIREBASE_ENABLED') === 'true';
+    }
+
+    isFirebaseMultiplayer() {
+        return this.getMultiplayerMode() === 'firebase';
+    }
+
+    getFirebaseConfig() {
+        return {
+            apiKey: this.get('FIREBASE_API_KEY'),
+            authDomain: this.get('FIREBASE_AUTH_DOMAIN'),
+            databaseURL: this.get('FIREBASE_DATABASE_URL'),
+            projectId: this.get('FIREBASE_PROJECT_ID'),
+            storageBucket: this.get('FIREBASE_STORAGE_BUCKET'),
+            messagingSenderId: this.get('FIREBASE_MESSAGING_SENDER_ID'),
+            appId: this.get('FIREBASE_APP_ID')
+        };
+    }
+
+    isFirebaseConfigured() {
+        const config = this.getFirebaseConfig();
+        return config.apiKey && config.authDomain && config.databaseURL && config.projectId;
     }
 
     // Telegram API configuration

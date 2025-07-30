@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎮 Гра в Слова - Firebase Multiplayer Demo</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .header h1 {
+            margin: 0;
+            color: #2D3748;
+            font-size: 2.5rem;
+            font-weight: 800;
+        }
+
+        .header p {
+            margin: 8px 0 0 0;
+            color: #718096;
+            font-size: 1.1rem;
+        }
+
+        .demo-section {
+            margin: 24px 0;
+            padding: 20px;
+            background: #F7FAFC;
+            border-radius: 12px;
+            border-left: 4px solid #4299E1;
+        }
+
+        .demo-section h3 {
+            margin: 0 0 12px 0;
+            color: #2D3748;
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 16px;
+            margin: 24px 0;
+        }
+
+        .feature {
+            background: #EDF2F7;
+            padding: 16px;
+            border-radius: 8px;
+            border-left: 3px solid #38B2AC;
+        }
+
+        .feature h4 {
+            margin: 0 0 8px 0;
+            color: #2D3748;
+        }
+
+        .feature p {
+            margin: 0;
+            color: #4A5568;
+            font-size: 0.9rem;
+        }
+
+        .status-bar {
+            background: #E2E8F0;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin: 16px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+        }
+
+        .instructions {
+            background: #FFF5F5;
+            border: 1px solid #FEB2B2;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+
+        .instructions h4 {
+            margin: 0 0 8px 0;
+            color: #C53030;
+        }
+
+        .code-block {
+            background: #1A202C;
+            color: #E2E8F0;
+            padding: 16px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 12px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+        }
+
+        .btn {
+            background: #4299E1;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.2s;
+            margin: 4px;
+        }
+
+        .btn:hover {
+            background: #3182CE;
+        }
+
+        .btn-secondary {
+            background: #718096;
+        }
+
+        .btn-secondary:hover {
+            background: #4A5568;
+        }
+
+        #firebase-multiplayer-container {
+            margin: 24px 0;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #718096;
+        }
+
+        .error {
+            background: #FED7D7;
+            color: #C53030;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin: 12px 0;
+        }
+
+        .success {
+            background: #C6F6D5;
+            color: #276749;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin: 12px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>🔥 Firebase Multiplayer Demo</h1>
+            <p>Демонстрація Firebase Realtime Database для мультиплеєр гри</p>
+        </header>
+
+        <div class="demo-section">
+            <h3>🚀 Можливості Firebase реалізації</h3>
+            <div class="features">
+                <div class="feature">
+                    <h4>🔄 Реалтайм синхронізація</h4>
+                    <p>Миттєва синхронізація між всіма гравцями через Firebase Realtime Database</p>
+                </div>
+                <div class="feature">
+                    <h4>🔐 Безпека</h4>
+                    <p>Захищені Firebase Security Rules та анонімна автентифікація</p>
+                </div>
+                <div class="feature">
+                    <h4>📱 Офлайн підтримка</h4>
+                    <p>Автоматична синхронізація при відновленні з'єднання</p>
+                </div>
+                <div class="feature">
+                    <h4>🌍 Глобальна доступність</h4>
+                    <p>Firebase CDN забезпечує швидкий доступ по всьому світу</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="instructions">
+            <h4>⚠️ Інструкції по налаштуванню</h4>
+            <p>
+                <strong>Для роботи демо потрібно:</strong><br>
+                1. Створити Firebase проект<br>
+                2. Налаштувати Realtime Database<br>
+                3. Замінити конфігурацію в firebase-config.js<br>
+                4. Додати Security Rules
+            </p>
+        </div>
+
+        <div class="status-bar" id="status-bar">
+            Статус: Ініціалізація Firebase...
+        </div>
+
+        <!-- Firebase Multiplayer UI буде вставлено сюди -->
+        <div id="firebase-multiplayer-container"></div>
+
+        <div class="demo-section">
+            <h3>📖 Технічна інформація</h3>
+            <p><strong>Архітектура:</strong> Firebase Realtime Database + Anonymous Auth</p>
+            <p><strong>Переваги:</strong></p>
+            <ul>
+                <li>Немає потреби в власному сервері</li>
+                <li>Автоматичне масштабування</li>
+                <li>Вбудована система безпеки</li>
+                <li>Підтримка офлайн режиму</li>
+                <li>Реалтайм оновлення</li>
+            </ul>
+            
+            <h4>Приклад Firebase Security Rules:</h4>
+            <div class="code-block">
+{
+  "rules": {
+    "rooms": {
+      "$roomCode": {
+        ".read": "auth != null",
+        ".write": "auth != null && (!data.exists() || data.child('hostId').val() == auth.uid)",
+        "players": {
+          "$playerId": {
+            ".write": "auth != null && $playerId == auth.uid"
+          }
+        }
+      }
+    }
+  }
+}
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <h3>🎮 Як використовувати</h3>
+            <ol>
+                <li><strong>Створіть кімнату:</strong> Натисніть "Створити кімнату" та поділіться кодом</li>
+                <li><strong>Приєднайтесь:</strong> Введіть код кімнати від друга</li>
+                <li><strong>Грайте:</strong> Як тільки з'явиться 2 гравці, хост може почати гру</li>
+            </ol>
+        </div>
+
+        <div style="text-align: center; margin-top: 32px;">
+            <button class="btn" onclick="window.location.reload()">🔄 Перезавантажити</button>
+            <button class="btn btn-secondary" onclick="clearLocalStorage()">🗑️ Очистити дані</button>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
+    <!-- Your Firebase scripts -->
+    <script src="env-config.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="firebase-multiplayer.js"></script>
+    <script src="firebase-multiplayer-ui.js"></script>
+
+    <script>
+        let statusUpdateInterval;
+        
+        function updateStatus() {
+            const statusBar = document.getElementById('status-bar');
+            if (!statusBar) return;
+
+            if (typeof firebase === 'undefined') {
+                statusBar.textContent = 'Статус: ❌ Firebase SDK не завантажено';
+                statusBar.style.background = '#FED7D7';
+                return;
+            }
+
+            if (window.firebaseMultiplayerManager) {
+                const status = window.firebaseMultiplayerManager.getConnectionStatus();
+                let statusText = 'Статус: ';
+                
+                if (status.initialized && status.connected) {
+                    statusText += '✅ Firebase підключено';
+                    if (status.roomCode) {
+                        statusText += ` | Кімната: ${status.roomCode}`;
+                    }
+                    statusBar.style.background = '#C6F6D5';
+                } else if (status.initialized) {
+                    statusText += '🔄 Підключення до Firebase...';
+                    statusBar.style.background = '#FEEBC8';
+                } else {
+                    statusText += '⏳ Ініціалізація Firebase...';
+                    statusBar.style.background = '#E2E8F0';
+                }
+                
+                statusBar.textContent = statusText;
+            } else {
+                statusBar.textContent = 'Статус: ⏳ Завантаження компонентів...';
+                statusBar.style.background = '#E2E8F0';
+            }
+        }
+
+        function clearLocalStorage() {
+            localStorage.clear();
+            alert('Локальні дані очищено');
+            window.location.reload();
+        }
+
+        // Update status every second
+        statusUpdateInterval = setInterval(updateStatus, 1000);
+        
+        // Initial status update
+        updateStatus();
+
+        // Log Firebase events for debugging
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                if (window.firebaseMultiplayerManager) {
+                    const manager = window.firebaseMultiplayerManager;
+                    
+                    // Log all events for debugging
+                    ['initialized', 'roomCreated', 'roomJoined', 'roomLeft', 'playersUpdated', 
+                     'gameStateUpdated', 'gameStarted', 'gameEnded', 'connectionStateChanged', 'error'].forEach(event => {
+                        manager.on(event, (data) => {
+                            console.log(`🔥 Firebase Event [${event}]:`, data);
+                        });
+                    });
+                }
+            }, 2000);
+        });
+    </script>
+</body>
+</html>
