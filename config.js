@@ -37,17 +37,21 @@ const GameConfig = {
     // Round duration options
     ROUND_DURATION_OPTIONS: [30, 45, 60, 75, 90, 120],
     
-    // Payment configuration (move sensitive data here)
+    // Payment configuration (sensitive data loaded from environment)
     PAYMENT: {
-        // This should be loaded from environment or secure config in production
-        PROVIDER_TOKEN: '5775769170:LIVE:TG_1oguw1YT13ms_s3AuCVLtWgA',
+        // This will be loaded from environment variables in production
+        PROVIDER_TOKEN: typeof window !== 'undefined' && window.EnvironmentConfig ? 
+            window.EnvironmentConfig.get('PAYMENT_PROVIDER_TOKEN') : 
+            'PAYMENT_TOKEN_NOT_CONFIGURED',
         CURRENCY: 'USDT',
         DONATION_AMOUNTS: [2, 5, 10]
     },
     
     // Bot configuration
     BOT: {
-        USERNAME: 'word_game_ua_bot'
+        USERNAME: typeof window !== 'undefined' && window.EnvironmentConfig ? 
+            window.EnvironmentConfig.get('TELEGRAM_BOT_USERNAME') : 
+            'word_game_ua_bot'
     },
     
     // UI configuration

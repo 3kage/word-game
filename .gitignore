@@ -3,6 +3,7 @@ node_modules/
 *.log
 .env
 .env.local
+.env.production
 
 # IDE files
 .vscode/
@@ -27,3 +28,14 @@ temp/
 *.bak
 *-old.*
 index-old.html
+
+# Sensitive configuration
+config.local.js
+.env.production
+
+# Coverage reports
+coverage/
+
+# npm
+package-lock.json
+yarn.lock

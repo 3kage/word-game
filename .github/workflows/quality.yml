@@ -1,0 +1,56 @@
+name: Code Quality Check
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  quality-check:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code 🛎️
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js 📦
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies 🔧
+      run: npm ci
+      
+    - name: Lint JavaScript 🧹
+      run: npm run lint
+      
+    - name: Validate HTML structure 📝
+      run: npm run validate
+      
+    - name: Check for sensitive data 🔍
+      run: |
+        echo "Checking for potential security issues..."
+        if grep -r "LIVE:" --include="*.js" --include="*.html" .; then
+          echo "❌ Found potential sensitive data in code!"
+          exit 1
+        fi
+        if grep -r "Bearer " --include="*.js" --include="*.html" .; then
+          echo "❌ Found potential API tokens in code!"
+          exit 1
+        fi
+        echo "✅ No sensitive data found in code"
+        
+    - name: Check file sizes 📊
+      run: |
+        echo "Checking file sizes..."
+        find . -name "*.js" -size +500k -exec echo "⚠️ Large JS file: {}" \;
+        find . -name "*.css" -size +100k -exec echo "⚠️ Large CSS file: {}" \;
+        
+    - name: Performance audit 🚀
+      run: |
+        echo "Basic performance checks..."
+        echo "JavaScript files count: $(find . -name '*.js' | wc -l)"
+        echo "CSS files count: $(find . -name '*.css' | wc -l)"
+        echo "Total project size: $(du -sh . | cut -f1)"

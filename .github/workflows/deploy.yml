@@ -1,0 +1,53 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout 🛎️
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js 📦
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies 🔧
+      run: npm ci
+      
+    - name: Lint code 🧹
+      run: npm run lint
+      
+    - name: Validate HTML 📝
+      run: npm run validate
+      
+    - name: Build project 🔨
+      run: npm run build
+      
+    - name: Deploy to GitHub Pages 🚀
+      if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./
+        exclude_assets: '.github,node_modules,*.json,*.md,.gitignore,.env*'
+        
+    - name: Comment on PR 💬
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: '✅ Build successful! Preview will be available once merged to main branch.'
+          })

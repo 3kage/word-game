@@ -62,14 +62,41 @@
 
 ## 🔧 Налаштування розробки
 
+### Швидкий старт:
+```bash
+# Клонування репозиторію
+git clone https://github.com/3kage/words-game-ua.git
+cd words-game-ua
+
+# Встановлення залежностей
+npm install
+
+# Запуск локального сервера
+npm run dev
+```
+
 ### Локальне тестування:
 ```bash
 # Запуск простого HTTP сервера
+npm start
+
+# Альтернативно з Python
 python3 -m http.server 8080
 
 # Або з Node.js
 npx serve .
 ```
+
+### Деплой на GitHub Pages:
+```bash
+# Автоматичний деплой через GitHub Actions (рекомендується)
+git push origin main
+
+# Ручний деплой
+npm run deploy
+```
+
+Детальні інструкції дивіться в [DEPLOY.md](./DEPLOY.md)
 
 ### Структура конфігурації:
 ```javascript
@@ -120,8 +147,33 @@ const GameConfig = {
 - [ ] Локалізація на інші мови
 - [ ] Голосове керування
 
+## 🛠️ Розробка та внесок
+
+### Встановлення:
+```bash
+git clone https://github.com/3kage/words-game-ua.git
+npm install
+npm run dev
+```
+
+### Внесок у проект:
+1. Fork репозиторію
+2. Створіть feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit зміни (`git commit -m 'Add some AmazingFeature'`)
+4. Push в branch (`git push origin feature/AmazingFeature`)
+5. Відкрийте Pull Request
+
+### Звітування про помилки:
+- Використовуйте [GitHub Issues](https://github.com/3kage/words-game-ua/issues)
+- Оберіть відповідний шаблон (Bug Report / Feature Request)
+
+## 📄 Ліцензія
+
+Цей проект ліцензовано під MIT License - дивіться [LICENSE](LICENSE) файл для деталей.
+
 ---
 
 **Розробник:** 3kage  
 **Ліцензія:** MIT  
-**Підтримка:** [Telegram Bot](https://t.me/word_game_ua_bot)
+**Підтримка:** [Telegram Bot](https://t.me/word_game_ua_bot)  
+**Демо:** [GitHub Pages](https://3kage.github.io/words-game-ua)
