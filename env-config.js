@@ -96,6 +96,15 @@ class EnvironmentConfig {
     getDonationAmounts() {
         return [2, 5, 10]; // Static for now, can be made configurable
     }
+
+    // AI and adaptive features
+    isAIFeaturesEnabled() {
+        return this.get('AI_FEATURES_ENABLED') === 'true';
+    }
+
+    getAIComplexityLevel() {
+        return parseInt(this.get('AI_COMPLEXITY_LEVEL') || '1', 10);
+    }
 }
 
 // Create global instance

@@ -1,0 +1,179 @@
+/* Theme System */
+:root {
+    /* Light theme (default) */
+    --bg-primary: #f3f4f6;
+    --bg-secondary: #ffffff;
+    --text-primary: #1f2937;
+    --text-secondary: #6b7280;
+    --accent-primary: #4f46e5;
+    --accent-secondary: #10b981;
+    --border-color: #e5e7eb;
+    --shadow: rgba(0, 0, 0, 0.1);
+    
+    /* Card backgrounds */
+    --card-bg: #ffffff;
+    --card-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    
+    /* Game specific colors */
+    --correct-color: #10b981;
+    --skip-color: #f59e0b;
+    --error-color: #ef4444;
+    --streak-color: #8b5cf6;
+}
+
+[data-theme="dark"] {
+    /* Dark theme */
+    --bg-primary: #111827;
+    --bg-secondary: #1f2937;
+    --text-primary: #f9fafb;
+    --text-secondary: #d1d5db;
+    --accent-primary: #6366f1;
+    --accent-secondary: #34d399;
+    --border-color: #374151;
+    --shadow: rgba(0, 0, 0, 0.3);
+    
+    /* Card backgrounds */
+    --card-bg: #1f2937;
+    --card-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    
+    /* Game specific colors */
+    --correct-color: #34d399;
+    --skip-color: #fbbf24;
+    --error-color: #f87171;
+    --streak-color: #a78bfa;
+}
+
+[data-theme="blue"] {
+    /* Blue theme */
+    --bg-primary: #dbeafe;
+    --bg-secondary: #eff6ff;
+    --text-primary: #1e3a8a;
+    --text-secondary: #3730a3;
+    --accent-primary: #2563eb;
+    --accent-secondary: #0ea5e9;
+    --border-color: #bfdbfe;
+    
+    --card-bg: #eff6ff;
+    --correct-color: #0ea5e9;
+    --skip-color: #f59e0b;
+    --error-color: #dc2626;
+    --streak-color: #7c3aed;
+}
+
+[data-theme="green"] {
+    /* Green theme */
+    --bg-primary: #dcfce7;
+    --bg-secondary: #f0fdf4;
+    --text-primary: #14532d;
+    --text-secondary: #166534;
+    --accent-primary: #16a34a;
+    --accent-secondary: #059669;
+    --border-color: #bbf7d0;
+    
+    --card-bg: #f0fdf4;
+    --correct-color: #059669;
+    --skip-color: #d97706;
+    --error-color: #dc2626;
+    --streak-color: #7c3aed;
+}
+
+/* Apply theme variables */
+body {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.card {
+    background-color: var(--card-bg);
+    box-shadow: var(--card-shadow);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+}
+
+.btn-primary {
+    background-color: var(--accent-primary);
+    border-color: var(--accent-primary);
+}
+
+.btn-primary:hover {
+    background-color: var(--accent-secondary);
+    border-color: var(--accent-secondary);
+}
+
+.btn-secondary {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+}
+
+.btn-secondary:hover {
+    background-color: var(--border-color);
+}
+
+/* Game-specific themed elements */
+.correct-word {
+    background-color: var(--correct-color);
+    color: white;
+}
+
+.skipped-word {
+    background-color: var(--skip-color);
+    color: white;
+}
+
+.streak-indicator {
+    background-color: var(--streak-color);
+    color: white;
+}
+
+/* Theme selector */
+.theme-selector {
+    display: flex;
+    gap: 8px;
+    margin: 16px 0;
+}
+
+.theme-option {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.theme-option:hover {
+    transform: scale(1.1);
+}
+
+.theme-option.active {
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
+}
+
+.theme-light { background: linear-gradient(135deg, #f3f4f6, #ffffff); }
+.theme-dark { background: linear-gradient(135deg, #111827, #1f2937); }
+.theme-blue { background: linear-gradient(135deg, #dbeafe, #2563eb); }
+.theme-green { background: linear-gradient(135deg, #dcfce7, #16a34a); }
+
+/* Accessibility improvements */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme]) {
+        --bg-primary: #111827;
+        --bg-secondary: #1f2937;
+        --text-primary: #f9fafb;
+        --text-secondary: #d1d5db;
+        --card-bg: #1f2937;
+        --border-color: #374151;
+        --shadow: rgba(0, 0, 0, 0.3);
+    }
+}

@@ -1,5 +1,40 @@
 // Game configuration object
 const GameConfig = {
+    // Game modes
+    GAME_MODES: {
+        CLASSIC: {
+            name: 'Класичний',
+            description: 'Стандартна гра на двох гравців',
+            maxPlayers: 2,
+            rounds: 2,
+            features: ['basic_scoring', 'streaks']
+        },
+        BLITZ: {
+            name: 'Блиц',
+            description: 'Швидка гра з коротшими раундами',
+            maxPlayers: 2,
+            rounds: 3,
+            roundDuration: 30,
+            features: ['double_scoring', 'quick_streaks']
+        },
+        MARATHON: {
+            name: 'Марафон',
+            description: 'Довга гра з більшою кількістю раундів',
+            maxPlayers: 2,
+            rounds: 5,
+            roundDuration: 90,
+            features: ['endurance_bonus', 'category_rotation']
+        },
+        TEAM: {
+            name: 'Командний (планується)',
+            description: 'Гра для команд до 4 гравців',
+            maxPlayers: 4,
+            rounds: 3,
+            features: ['team_scoring', 'relay_mode'],
+            comingSoon: true
+        }
+    },
+
     // Default game settings
     DEFAULT_ROUND_DURATION: 60,
     TOTAL_ROUNDS: 2,
@@ -34,6 +69,59 @@ const GameConfig = {
         }
     },
     
+    // Achievement system
+    ACHIEVEMENTS: {
+        FIRST_WIN: {
+            id: 'first_win',
+            name: 'Перша перемога',
+            description: 'Виграйте свою першу гру',
+            icon: '🏆',
+            points: 10
+        },
+        SPEED_DEMON: {
+            id: 'speed_demon',
+            name: 'Швидкісний демон',
+            description: 'Відгадайте 10 слів за раунд',
+            icon: '⚡',
+            points: 25
+        },
+        STREAK_MASTER: {
+            id: 'streak_master',
+            name: 'Майстер серій',
+            description: 'Досягніть серії з 15 слів',
+            icon: '🔥',
+            points: 30
+        },
+        CATEGORY_EXPERT: {
+            id: 'category_expert',
+            name: 'Експерт категорій',
+            description: 'Створіть 5 власних категорій',
+            icon: '📚',
+            points: 20
+        },
+        MARATHON_RUNNER: {
+            id: 'marathon_runner',
+            name: 'Марафонець',
+            description: 'Завершіть 10 ігор в режимі Марафон',
+            icon: '🏃',
+            points: 50
+        },
+        PERFECT_ROUND: {
+            id: 'perfect_round',
+            name: 'Ідеальний раунд',
+            description: 'Відгадайте всі слова в раунді без пропусків',
+            icon: '💎',
+            points: 40
+        },
+        SOCIAL_BUTTERFLY: {
+            id: 'social_butterfly',
+            name: 'Соціальна метелик',
+            description: 'Поділіться грою 5 разів',
+            icon: '🦋',
+            points: 15
+        }
+    },
+
     // Round duration options
     ROUND_DURATION_OPTIONS: [30, 45, 60, 75, 90, 120],
     
@@ -63,6 +151,26 @@ const GameConfig = {
         SUCCESS_MESSAGE_TIMEOUT: 3000
     },
     
+    // Statistics tracking
+    STATISTICS: {
+        GAME_STATS: [
+            'total_games',
+            'wins',
+            'losses',
+            'total_words_guessed',
+            'total_words_skipped',
+            'best_streak',
+            'favorite_category',
+            'total_playtime'
+        ],
+        PERFORMANCE_METRICS: [
+            'average_words_per_minute',
+            'guess_accuracy',
+            'category_performance',
+            'difficulty_progress'
+        ]
+    },
+
     // Storage keys for Telegram Cloud Storage
     STORAGE_KEYS: {
         HISTORY: 'word_game_history',
