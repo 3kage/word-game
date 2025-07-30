@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase Status Check</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .status-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 10px 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .status-icon {
+            font-size: 24px;
+            margin-right: 10px;
+        }
+        .success { color: #28a745; }
+        .error { color: #dc3545; }
+        .warning { color: #ffc107; }
+        .info { color: #007bff; }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 5px;
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover { background: #0056b3; }
+        .log {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔥 Firebase Status Check</h1>
+    
+    <div class="status-card">
+        <h3><span class="status-icon">📡</span>Firebase Configuration</h3>
+        <div id="configStatus">Перевіряємо...</div>
+        <button onclick="checkConfig()">Перевірити конфігурацію</button>
+    </div>
+    
+    <div class="status-card">
+        <h3><span class="status-icon">🔐</span>Authentication</h3>
+        <div id="authStatus">Перевіряємо...</div>
+        <button onclick="checkAuth()">Тест автентифікації</button>
+    </div>
+    
+    <div class="status-card">
+        <h3><span class="status-icon">💾</span>Database</h3>
+        <div id="dbStatus">Перевіряємо...</div>
+        <button onclick="checkDatabase()">Тест бази даних</button>
+    </div>
+    
+    <div class="status-card">
+        <h3><span class="status-icon">🎮</span>Multiplayer</h3>
+        <div id="mpStatus">Перевіряємо...</div>
+        <button onclick="checkMultiplayer()">Тест мультиплеєра</button>
+    </div>
+    
+    <div class="log" id="logOutput"></div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
+    
+    <script src="firebase-config.js"></script>
+    
+    <script>
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logOutput = document.getElementById('logOutput');
+            logOutput.innerHTML += `<div class="${type}">[${timestamp}] ${message}</div>`;
+            logOutput.scrollTop = logOutput.scrollHeight;
+        }
+        
+        async function checkConfig() {
+            const statusEl = document.getElementById('configStatus');
+            try {
+                const config = FirebaseConfig.getConfig();
+                statusEl.innerHTML = '<span class="success">✅ Конфігурація завантажена</span>';
+                log('Конфігурація Firebase завантажена успішно', 'success');
+                log(`Проект: ${config.firebaseConfig.projectId}`, 'info');
+                log(`Database URL: ${config.firebaseConfig.databaseURL}`, 'info');
+                
+                // Initialize Firebase
+                if (!firebase.apps.length) {
+                    firebase.initializeApp(config.firebaseConfig);
+                    log('Firebase ініціалізовано', 'success');
+                }
+                
+            } catch (error) {
+                statusEl.innerHTML = '<span class="error">❌ Помилка конфігурації</span>';
+                log('Помилка: ' + error.message, 'error');
+            }
+        }
+        
+        async function checkAuth() {
+            const statusEl = document.getElementById('authStatus');
+            try {
+                log('Тестування автентифікації...', 'info');
+                
+                // Check if already signed in
+                const currentUser = firebase.auth().currentUser;
+                if (currentUser) {
+                    statusEl.innerHTML = '<span class="success">✅ Користувач автентифікований</span>';
+                    log(`Поточний користувач: ${currentUser.uid}`, 'success');
+                    return;
+                }
+                
+                // Try to sign in anonymously
+                const userCredential = await firebase.auth().signInAnonymously();
+                statusEl.innerHTML = '<span class="success">✅ Анонімна автентифікація працює</span>';
+                log(`Анонімний вхід успішний: ${userCredential.user.uid}`, 'success');
+                
+            } catch (error) {
+                if (error.code === 'auth/operation-not-allowed') {
+                    statusEl.innerHTML = '<span class="warning">⚠️ Anonymous Auth не увімкнено</span>';
+                    log('Anonymous Authentication не увімкнено в Firebase Console', 'warning');
+                    log('Увімкніть: Firebase Console → Authentication → Sign-in method → Anonymous', 'info');
+                } else {
+                    statusEl.innerHTML = '<span class="error">❌ Помилка автентифікації</span>';
+                    log('Помилка автентифікації: ' + error.message, 'error');
+                }
+            }
+        }
+        
+        async function checkDatabase() {
+            const statusEl = document.getElementById('dbStatus');
+            try {
+                log('Тестування бази даних...', 'info');
+                
+                const testRef = firebase.database().ref('test').push();
+                const testData = {
+                    message: 'Test connection',
+                    timestamp: firebase.database.ServerValue.TIMESTAMP,
+                    user: firebase.auth().currentUser?.uid || 'anonymous'
+                };
+                
+                await testRef.set(testData);
+                log('Запис в базу даних успішний', 'success');
+                
+                const snapshot = await testRef.once('value');
+                const data = snapshot.val();
+                log('Читання з бази даних успішне', 'success');
+                
+                await testRef.remove();
+                log('Видалення тестових даних успішне', 'success');
+                
+                statusEl.innerHTML = '<span class="success">✅ База даних працює</span>';
+                
+            } catch (error) {
+                if (error.code === 'PERMISSION_DENIED') {
+                    statusEl.innerHTML = '<span class="warning">⚠️ Security Rules потрібно налаштувати</span>';
+                    log('Security Rules не налаштовані або користувач не автентифікований', 'warning');
+                    log('Додайте Security Rules з файлу ENABLE-AUTH.md', 'info');
+                } else {
+                    statusEl.innerHTML = '<span class="error">❌ Помилка бази даних</span>';
+                    log('Помилка бази даних: ' + error.message, 'error');
+                }
+            }
+        }
+        
+        async function checkMultiplayer() {
+            const statusEl = document.getElementById('mpStatus');
+            try {
+                log('Тестування мультиплеєра...', 'info');
+                
+                // Load multiplayer script
+                if (typeof FirebaseMultiplayerManager === 'undefined') {
+                    const script = document.createElement('script');
+                    script.src = 'firebase-multiplayer.js';
+                    document.head.appendChild(script);
+                    
+                    await new Promise((resolve) => {
+                        script.onload = resolve;
+                    });
+                }
+                
+                const multiplayer = new FirebaseMultiplayerManager();
+                await multiplayer.initialize();
+                
+                log('Firebase Multiplayer ініціалізовано', 'success');
+                statusEl.innerHTML = '<span class="success">✅ Мультиплеєр готовий</span>';
+                
+            } catch (error) {
+                statusEl.innerHTML = '<span class="error">❌ Помилка мультиплеєра</span>';
+                log('Помилка мультиплеєра: ' + error.message, 'error');
+            }
+        }
+        
+        // Auto-check on load
+        window.addEventListener('load', async () => {
+            await checkConfig();
+            setTimeout(checkAuth, 1000);
+            setTimeout(checkDatabase, 2000);
+            setTimeout(checkMultiplayer, 3000);
+        });
+    </script>
+</body>
+</html>
