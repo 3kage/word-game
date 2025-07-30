@@ -10,7 +10,7 @@ class EnvironmentConfig {
     loadEnvironmentVariables() {
         // Default fallback values (safe for public repository)
         const defaults = {
-            'TELEGRAM_BOT_USERNAME': 'word_game_ua_bot',
+            'TELEGRAM_BOT_USERNAME': 'word_game_ua_bot',  // Ваш username бота
             'TELEGRAM_BOT_TOKEN': '',  // Set in GitHub Actions secrets
             'PAYMENT_PROVIDER_TOKEN': 'PAYMENT_TOKEN_NOT_CONFIGURED',
             'PAYMENT_CURRENCY': 'USDT',
