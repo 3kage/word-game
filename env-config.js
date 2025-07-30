@@ -11,13 +11,19 @@ class EnvironmentConfig {
         // Default fallback values (safe for public repository)
         const defaults = {
             'TELEGRAM_BOT_USERNAME': 'word_game_ua_bot',
+            'TELEGRAM_BOT_TOKEN': '',  // Set in GitHub Actions secrets
             'PAYMENT_PROVIDER_TOKEN': 'PAYMENT_TOKEN_NOT_CONFIGURED',
             'PAYMENT_CURRENCY': 'USDT',
             'GAME_ENVIRONMENT': 'production',
             'DEBUG_MODE': 'false',
             'AI_FEATURES_ENABLED': 'true',
             'AI_COMPLEXITY_LEVEL': '1',
+            'MULTIPLAYER_MODE': 'telegram',  // 'websocket' or 'telegram'
             'WEBSOCKET_URL': 'ws://localhost:3001',
+            'TELEGRAM_API_URL': 'https://api.telegram.org/bot',
+            'GITHUB_API_URL': 'https://api.github.com',
+            'GITHUB_REPO': '3kage/word-game',
+            'GITHUB_TOKEN': '',  // For GitHub API access
             'SPEECH_API_ENABLED': 'true',
             'SPEECH_LANGUAGE': 'uk-UA',
             'MULTIPLAYER_ENABLED': 'true',
@@ -123,8 +129,40 @@ class EnvironmentConfig {
         return this.get('MULTIPLAYER_ENABLED') === 'true';
     }
 
+    getMultiplayerMode() {
+        return this.get('MULTIPLAYER_MODE') || 'telegram';
+    }
+
     getWebSocketURL() {
         return this.get('WEBSOCKET_URL') || 'ws://localhost:3001';
+    }
+
+    // Telegram API configuration
+    getTelegramBotToken() {
+        return this.get('TELEGRAM_BOT_TOKEN');
+    }
+
+    getTelegramAPIURL() {
+        const token = this.getTelegramBotToken();
+        if (!token) return null;
+        return `${this.get('TELEGRAM_API_URL')}${token}`;
+    }
+
+    isTelegramMultiplayer() {
+        return this.getMultiplayerMode() === 'telegram';
+    }
+
+    // GitHub API configuration  
+    getGitHubToken() {
+        return this.get('GITHUB_TOKEN');
+    }
+
+    getGitHubAPIURL() {
+        return this.get('GITHUB_API_URL') || 'https://api.github.com';
+    }
+
+    getGitHubRepo() {
+        return this.get('GITHUB_REPO') || '3kage/word-game';
     }
 
     // Speech API configuration

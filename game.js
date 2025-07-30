@@ -176,8 +176,61 @@ class WordGame {
         if (shareButton) shareButton.addEventListener('click', () => this.shareBot());
         if (donateScreenBtn) donateScreenBtn.addEventListener('click', () => this.showDonate());
 
+        // Multiplayer buttons
+        const createRoomBtn = document.getElementById('create-room-btn');
+        const joinRoomBtn = document.getElementById('join-room-btn');
+
+        if (createRoomBtn) createRoomBtn.addEventListener('click', () => this.showCreateRoom());
+        if (joinRoomBtn) joinRoomBtn.addEventListener('click', () => this.showJoinRoom());
+
         // Setup speech integration
         this.setupSpeechIntegration();
+        
+        // Setup multiplayer integration
+        this.setupMultiplayerIntegration();
+    }
+
+    setupMultiplayerIntegration() {
+        if (!window.multiplayerManager) return;
+
+        const mp = window.multiplayerManager;
+
+        // Listen for multiplayer events
+        mp.on('roomCreated', (data) => {
+            this.onRoomCreated(data);
+        });
+
+        mp.on('roomJoined', (data) => {
+            this.onRoomJoined(data);
+        });
+
+        mp.on('playerJoined', (data) => {
+            this.onPlayerJoined(data);
+        });
+
+        mp.on('playerLeft', (data) => {
+            this.onPlayerLeft(data);
+        });
+
+        mp.on('gameStarted', (data) => {
+            this.onMultiplayerGameStarted(data);
+        });
+
+        mp.on('gameAction', (data) => {
+            this.onMultiplayerGameAction(data);
+        });
+
+        mp.on('gameStateUpdate', (data) => {
+            this.onMultiplayerGameStateUpdate(data);
+        });
+
+        mp.on('disconnected', () => {
+            this.onMultiplayerDisconnected();
+        });
+
+        mp.on('error', (data) => {
+            this.showError('Помилка мультиплеєра: ' + data.error);
+        });
     }
 
     setupSpeechIntegration() {

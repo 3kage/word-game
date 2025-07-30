@@ -1,4 +1,4 @@
-name: Deploy to GitHub Pages
+name: Deploy Word Game with Telegram Multiplayer
 
 on:
   push:
@@ -28,6 +28,55 @@ jobs:
       
     - name: Validate HTML 📝
       run: npm run validate
+      
+    - name: Inject Build Configuration 🔧
+      if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+      env:
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        # Create build configuration for browser
+        echo "// Build-time configuration injected by GitHub Actions" > build-config.js
+        echo "window.BUILD_CONFIG = {" >> build-config.js
+        echo "  'TELEGRAM_BOT_TOKEN': '${{ secrets.TELEGRAM_BOT_TOKEN }}'," >> build-config.js
+        echo "  'GITHUB_TOKEN': '${{ secrets.GITHUB_TOKEN }}'," >> build-config.js
+        echo "  'GAME_ENVIRONMENT': 'production'," >> build-config.js
+        echo "  'MULTIPLAYER_MODE': 'telegram'," >> build-config.js
+        echo "  'GITHUB_REPO': '${{ github.repository }}'," >> build-config.js
+        echo "  'GITHUB_API_URL': 'https://api.github.com'," >> build-config.js
+        echo "  'TELEGRAM_API_URL': 'https://api.telegram.org/bot'" >> build-config.js
+        echo "};" >> build-config.js
+        
+    - name: Setup Telegram Bot 🤖
+      if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+      env:
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      run: |
+        if [ ! -z "$TELEGRAM_BOT_TOKEN" ]; then
+          echo "Setting up Telegram Bot for multiplayer..."
+          
+          # Set bot commands
+          curl -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/setMyCommands" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "commands": [
+                {"command": "start", "description": "🎮 Почати гру"},
+                {"command": "help", "description": "❓ Допомога"},
+                {"command": "create", "description": "🏠 Створити кімнату"},
+                {"command": "join", "description": "🚪 Приєднатися до кімнати"},
+                {"command": "stats", "description": "📊 Статистика"}
+              ]
+            }'
+            
+          # Set bot description
+          curl -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/setMyDescription" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "description": "🇺🇦 Гра в слова українською мовою з підтримкою мультиплеєра. Грайте з друзями в режимі реального часу!"
+            }'
+        else
+          echo "TELEGRAM_BOT_TOKEN not set, skipping Telegram setup"
+        fi
       
     - name: Build project 🔨
       run: npm run build

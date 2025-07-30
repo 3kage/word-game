@@ -53,6 +53,14 @@
                 <button id="history-button" class="btn btn-secondary w-full text-base">Історія</button>
                 <button id="settings-button" class="btn btn-secondary w-full text-base">Налаштування</button>
             </div>
+            <!-- Multiplayer Section -->
+            <div id="multiplayer-section" class="mt-4 p-4 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg text-white">
+                <h3 class="text-lg font-semibold mb-3 text-center">🌐 Мультиплеєр</h3>
+                <div class="grid grid-cols-2 gap-2">
+                    <button id="create-room-btn" class="btn btn-host text-sm">Створити кімнату</button>
+                    <button id="join-room-btn" class="btn btn-join text-sm">Приєднатися</button>
+                </div>
+            </div>
             <button id="donate-screen-btn" class="btn w-full text-lg mt-3 bg-amber-500 text-white hover:bg-amber-600">💛 Підтримати проєкт</button>
             <button id="share-button" class="btn w-full text-lg mt-3 bg-green-500 text-white hover:bg-green-600">🚀 Поділитися грою</button>
         </div>
@@ -63,13 +71,28 @@
     </div>
     
     <script src="env-config.js"></script>
+    <script>
+        // Завантажуємо build-config.js тільки якщо він існує
+        (function() {
+            const script = document.createElement('script');
+            script.src = 'build-config.js';
+            script.onerror = function() {
+                console.log('🔧 Build config not found, using defaults');
+            };
+            document.head.appendChild(script);
+        })();
+    </script>
     <script src="config.js"></script>
     <script src="words.js"></script>
     <script src="localization.js"></script>
+    <script src="multiplayer.js"></script>
+    <script src="multiplayer-telegram.js"></script>
+    <script src="multiplayer-telegram-adapter.js"></script>
     <script src="speech.js"></script>
     <script src="enhancements.js"></script>
     <script src="analytics.js"></script>
     <script src="game.js"></script>
+    <script src="multiplayer-integration.js"></script>
     
     <!-- PWA Service Worker -->
     <script>

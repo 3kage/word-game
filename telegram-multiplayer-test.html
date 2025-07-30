@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест Telegram Мультиплеєра</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: var(--tg-theme-bg-color, #ffffff);
+            color: var(--tg-theme-text-color, #000000);
+        }
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        .card {
+            background: var(--tg-theme-secondary-bg-color, #f0f0f0);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        button {
+            background: var(--tg-theme-button-color, #0088cc);
+            color: var(--tg-theme-button-text-color, #ffffff);
+            border: none;
+            border-radius: 8px;
+            padding: 12px 20px;
+            margin: 5px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 16px;
+        }
+        button:hover {
+            opacity: 0.8;
+        }
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin: 5px 0;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 8px;
+            margin: 10px 0;
+            text-align: center;
+            font-weight: bold;
+        }
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        .status.info { background: #d1ecf1; color: #0c5460; }
+        .logs {
+            background: #000;
+            color: #0f0;
+            padding: 15px;
+            border-radius: 8px;
+            height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎮 Тест Telegram Мультиплеєра</h1>
+        
+        <div id="telegram-info" class="card">
+            <h3>📱 Telegram WebApp Info</h3>
+            <div id="webapp-status">Завантаження...</div>
+        </div>
+
+        <div class="card">
+            <h3>🏠 Створити кімнату</h3>
+            <input type="text" id="host-name" placeholder="Ваше ім'я">
+            <button onclick="createRoom()">Створити кімнату</button>
+            
+            <div id="room-created" style="display: none;">
+                <div class="status success">
+                    Код кімнати: <span id="room-code"></span>
+                </div>
+                <button onclick="copyRoomCode()">📋 Копіювати код</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>🚪 Приєднатися до кімнати</h3>
+            <input type="text" id="player-name" placeholder="Ваше ім'я">
+            <input type="text" id="join-code" placeholder="Код кімнати" maxlength="6" style="text-transform: uppercase;">
+            <button onclick="joinRoom()">Приєднатися</button>
+        </div>
+
+        <div class="card">
+            <h3>🎯 Тестові дії</h3>
+            <button onclick="sendAction('correct')">✅ Правильно</button>
+            <button onclick="sendAction('skip')">⏭️ Пропустити</button>
+            <button onclick="sendAction('pause')">⏸️ Пауза</button>
+            <button onclick="leaveRoom()">🚪 Покинути кімнату</button>
+        </div>
+
+        <div id="status" class="status info">Готовий до тестування</div>
+
+        <div class="logs" id="logs">
+            <div>🚀 Ініціалізація тесту...</div>
+        </div>
+    </div>
+
+    <script src="env-config.js"></script>
+    <script src="build-config.js"></script>
+    <script src="multiplayer-telegram.js"></script>
+
+    <script>
+        let telegramMP = null;
+        let currentRoom = null;
+
+        function log(message, type = 'info') {
+            const logs = document.getElementById('logs');
+            const entry = document.createElement('div');
+            entry.style.color = type === 'error' ? '#f88' : type === 'success' ? '#8f8' : '#0f0';
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logs.appendChild(entry);
+            logs.scrollTop = logs.scrollHeight;
+        }
+
+        function updateStatus(message, type = 'info') {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status ${type}`;
+        }
+
+        function showTelegramInfo() {
+            const webappStatus = document.getElementById('webapp-status');
+            
+            if (window.Telegram?.WebApp) {
+                const tg = window.Telegram.WebApp;
+                const user = tg.initDataUnsafe?.user;
+                
+                webappStatus.innerHTML = `
+                    <strong>✅ Telegram WebApp виявлено</strong><br>
+                    <small>Версія: ${tg.version || 'Unknown'}</small><br>
+                    ${user ? `
+                        <small>Користувач: ${user.first_name || user.username || 'Unknown'}</small><br>
+                        <small>ID: ${user.id}</small>
+                    ` : '<small>Дані користувача недоступні</small>'}
+                `;
+                
+                // Автозаповнення імен
+                if (user) {
+                    const name = user.first_name || user.username || 'Telegram User';
+                    document.getElementById('host-name').value = name;
+                    document.getElementById('player-name').value = name;
+                }
+                
+                // Налаштування Telegram WebApp
+                tg.ready();
+                tg.expand();
+            } else {
+                webappStatus.innerHTML = `
+                    <strong>⚠️ Telegram WebApp не виявлено</strong><br>
+                    <small>Відкрийте в Telegram або користуйтеся браузером</small>
+                `;
+            }
+        }
+
+        async function initTelegramMultiplayer() {
+            try {
+                log('Ініціалізація Telegram мультиплеєра...');
+                
+                if (!window.TelegramMultiplayerManager) {
+                    throw new Error('TelegramMultiplayerManager не знайдено');
+                }
+                
+                telegramMP = new window.TelegramMultiplayerManager();
+                
+                // Налаштовуємо обробники подій
+                telegramMP.on('roomCreated', (data) => {
+                    log(`✅ Кімнату створено: ${data.roomCode}`, 'success');
+                    currentRoom = data.roomCode;
+                    document.getElementById('room-code').textContent = data.roomCode;
+                    document.getElementById('room-created').style.display = 'block';
+                    updateStatus(`Кімната створена: ${data.roomCode}`, 'success');
+                });
+
+                telegramMP.on('roomJoined', (data) => {
+                    log(`✅ Приєднались до кімнати: ${data.roomCode}`, 'success');
+                    currentRoom = data.roomCode;
+                    updateStatus(`В кімнаті: ${data.roomCode}`, 'success');
+                });
+
+                telegramMP.on('playerJoined', (data) => {
+                    log(`👤 Гравець приєднався: ${data.playerName}`, 'info');
+                });
+
+                telegramMP.on('playerLeft', (data) => {
+                    log(`👋 Гравець пішов: ${data.playerName}`, 'info');
+                });
+
+                telegramMP.on('gameAction', (data) => {
+                    log(`🎯 Дія від ${data.playerName}: ${data.action}`, 'info');
+                });
+
+                telegramMP.on('error', (data) => {
+                    log(`❌ Помилка: ${data.message}`, 'error');
+                    updateStatus(`Помилка: ${data.message}`, 'error');
+                });
+
+                log('✅ Telegram мультиплеєр готовий', 'success');
+                updateStatus('Готовий до використання', 'success');
+                
+            } catch (error) {
+                log(`❌ Помилка ініціалізації: ${error.message}`, 'error');
+                updateStatus(`Помилка: ${error.message}`, 'error');
+            }
+        }
+
+        async function createRoom() {
+            const hostName = document.getElementById('host-name').value.trim();
+            
+            if (!hostName) {
+                updateStatus('Введіть ваше ім\'я', 'error');
+                return;
+            }
+
+            if (!telegramMP) {
+                updateStatus('Спочатку ініціалізуйте мультиплеєр', 'error');
+                return;
+            }
+
+            try {
+                log(`Створення кімнати для ${hostName}...`);
+                updateStatus('Створення кімнати...', 'info');
+                
+                const result = await telegramMP.createRoom({
+                    category: 'Тестова',
+                    roundDuration: 60,
+                    maxPlayers: 2
+                });
+                
+                if (!result.success) {
+                    throw new Error(result.error || 'Не вдалося створити кімнату');
+                }
+                
+            } catch (error) {
+                log(`❌ Помилка створення кімнати: ${error.message}`, 'error');
+                updateStatus(`Помилка: ${error.message}`, 'error');
+            }
+        }
+
+        async function joinRoom() {
+            const playerName = document.getElementById('player-name').value.trim();
+            const roomCode = document.getElementById('join-code').value.trim().toUpperCase();
+            
+            if (!playerName) {
+                updateStatus('Введіть ваше ім\'я', 'error');
+                return;
+            }
+            
+            if (!roomCode || roomCode.length !== 6) {
+                updateStatus('Введіть правильний код кімнати (6 символів)', 'error');
+                return;
+            }
+
+            if (!telegramMP) {
+                updateStatus('Спочатку ініціалізуйте мультиплеєр', 'error');
+                return;
+            }
+
+            try {
+                log(`Приєднання до кімнати ${roomCode} як ${playerName}...`);
+                updateStatus('Приєднання...', 'info');
+                
+                const result = await telegramMP.joinRoom(roomCode, playerName);
+                
+                if (!result.success) {
+                    throw new Error(result.error || 'Не вдалося приєднатися');
+                }
+                
+            } catch (error) {
+                log(`❌ Помилка приєднання: ${error.message}`, 'error');
+                updateStatus(`Помилка: ${error.message}`, 'error');
+            }
+        }
+
+        async function sendAction(action) {
+            if (!currentRoom) {
+                updateStatus('Спочатку приєднайтеся до кімнати', 'error');
+                return;
+            }
+
+            if (!telegramMP) {
+                updateStatus('Мультиплеєр не ініціалізовано', 'error');
+                return;
+            }
+
+            try {
+                log(`Відправка дії: ${action}`);
+                
+                await telegramMP.sendGameAction(action, {
+                    word: 'ТЕСТ',
+                    points: Math.floor(Math.random() * 50) + 10,
+                    timestamp: Date.now()
+                });
+                
+                updateStatus(`Дія відправлена: ${action}`, 'success');
+                
+            } catch (error) {
+                log(`❌ Помилка відправки дії: ${error.message}`, 'error');
+                updateStatus(`Помилка: ${error.message}`, 'error');
+            }
+        }
+
+        async function leaveRoom() {
+            if (!currentRoom) {
+                updateStatus('Ви не в кімнаті', 'error');
+                return;
+            }
+
+            if (!telegramMP) {
+                updateStatus('Мультиплеєр не ініціалізовано', 'error');
+                return;
+            }
+
+            try {
+                log('Покидання кімнати...');
+                
+                await telegramMP.leaveRoom();
+                
+                currentRoom = null;
+                document.getElementById('room-created').style.display = 'none';
+                updateStatus('Покинули кімнату', 'info');
+                
+            } catch (error) {
+                log(`❌ Помилка покидання кімнати: ${error.message}`, 'error');
+                updateStatus(`Помилка: ${error.message}`, 'error');
+            }
+        }
+
+        function copyRoomCode() {
+            const roomCode = document.getElementById('room-code').textContent;
+            
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(roomCode).then(() => {
+                    updateStatus('Код скопійовано!', 'success');
+                    log('📋 Код кімнати скопійовано', 'success');
+                });
+            } else {
+                // Fallback для старих браузерів
+                const textArea = document.createElement('textarea');
+                textArea.value = roomCode;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                updateStatus('Код скопійовано!', 'success');
+                log('📋 Код кімнати скопійовано (fallback)', 'success');
+            }
+        }
+
+        // Ініціалізація при завантаженні
+        window.addEventListener('load', async () => {
+            log('🚀 Завантаження тесту...');
+            
+            showTelegramInfo();
+            
+            // Чекаємо поки завантажиться залежності
+            let attempts = 0;
+            const maxAttempts = 50;
+            
+            const waitForDependencies = () => {
+                attempts++;
+                
+                if (window.EnvironmentConfig && window.TelegramMultiplayerManager) {
+                    log('📦 Залежності завантажені');
+                    initTelegramMultiplayer();
+                } else if (attempts < maxAttempts) {
+                    setTimeout(waitForDependencies, 100);
+                } else {
+                    log('❌ Не вдалося завантажити залежності', 'error');
+                    updateStatus('Помилка завантаження залежностей', 'error');
+                }
+            };
+            
+            waitForDependencies();
+        });
+
+        // Обробка автоматичного введення коду в upper case
+        document.getElementById('join-code').addEventListener('input', (e) => {
+            e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+        });
+    </script>
+</body>
+</html>

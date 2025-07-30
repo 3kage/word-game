@@ -7,11 +7,13 @@
     "start": "serve -s . -l 8080",
     "dev": "serve -s . -l 8080",
     "serve": "serve -s .",
+    "server": "node server.js",
+    "server:dev": "nodemon server.js",
     "setup": "node -e \"console.log('🎮 Для Windows: setup.bat\\n🐧 Для Linux/Mac: ./setup.sh')\"",
     "build": "npm run minify && npm run optimize",
     "minify": "npm run minify:js && npm run minify:css",
-    "minify:js": "terser game.js --compress --mangle -o dist/game.min.js && terser config.js --compress --mangle -o dist/config.min.js && terser words.js --compress --mangle -o dist/words.min.js && terser enhancements.js --compress --mangle -o dist/enhancements.min.js && terser analytics.js --compress --mangle -o dist/analytics.min.js",
-    "minify:css": "cleancss -o dist/styles.min.css styles.css && cleancss -o dist/themes.min.css themes.css && cleancss -o dist/animations.min.css animations.css",
+    "minify:js": "terser game.js --compress --mangle -o dist/game.min.js && terser config.js --compress --mangle -o dist/config.min.js && terser words.js --compress --mangle -o dist/words.min.js && terser enhancements.js --compress --mangle -o dist/enhancements.min.js && terser analytics.js --compress --mangle -o dist/analytics.min.js && terser multiplayer.js --compress --mangle -o dist/multiplayer.min.js && terser speech.js --compress --mangle -o dist/speech.min.js",
+    "minify:css": "cleancss -o dist/styles.min.css styles.css && cleancss -o dist/themes.min.css themes.css && cleancss -o dist/animations.min.css animations.css && cleancss -o dist/speech-styles.min.css speech-styles.css",
     "optimize": "npm run optimize:images",
     "optimize:images": "echo 'Image optimization would run here (imagemin, sharp, etc.)'",
     "prepare": "mkdir -p dist",
@@ -47,9 +49,13 @@
     "clean-css-cli": "^5.6.2",
     "gh-pages": "^6.1.0",
     "eslint": "^8.56.0",
-    "html-validate": "^8.7.0"
+    "html-validate": "^8.7.0",
+    "nodemon": "^3.0.1"
   },
-  "dependencies": {},
+  "dependencies": {
+    "ws": "^8.14.2",
+    "uuid": "^9.0.1"
+  },
   "engines": {
     "node": ">=16.0.0",
     "npm": ">=8.0.0"
