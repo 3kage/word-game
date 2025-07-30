@@ -11,16 +11,33 @@ class TelegramMultiplayerAdapter {
 
     async init() {
         // Перевіряємо режим мультиплеєра
-        const multiplayerMode = window.EnvironmentConfig?.getMultiplayerMode() || 'websocket';
+        const multiplayerMode = window.EnvironmentConfig?.getMultiplayerMode() || 'telegram';
+        const isDevelopment = window.EnvironmentConfig?.isDevelopment();
+        const hasGitHubToken = window.EnvironmentConfig?.getGitHubToken();
+        
+        console.log(`🔧 Режим: ${multiplayerMode}, Development: ${isDevelopment}, GitHub Token: ${!!hasGitHubToken}`);
         
         if (multiplayerMode === 'telegram' && window.TelegramMultiplayerManager) {
             console.log('📱 Ініціалізація Telegram мультиплеєра...');
             this.telegramMP = new window.TelegramMultiplayerManager();
+            
+            // Якщо в development режимі і немає GitHub токена, використовуємо fallback
+            if (isDevelopment && !hasGitHubToken && window.LocalMultiplayerFallback) {
+                console.log('🔄 Використовуємо локальний fallback для розробки');
+                this.telegramMP = new window.LocalMultiplayerFallback();
+            }
+            
             this.setupTelegramEventListeners();
             this.setupTelegramUI();
             console.log('✅ Telegram мультиплеєр готовий');
         } else {
-            console.log('🌐 Використовується WebSocket мультиплеєр');
+            console.log('🌐 Fallback на локальний мультиплеєр');
+            if (window.LocalMultiplayerFallback) {
+                this.telegramMP = new window.LocalMultiplayerFallback();
+                this.setupTelegramEventListeners();
+                this.setupTelegramUI();
+                console.log('✅ Локальний мультиплеєр готовий');
+            }
         }
     }
 

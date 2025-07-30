@@ -14,8 +14,8 @@ class EnvironmentConfig {
             'TELEGRAM_BOT_TOKEN': '',  // Set in GitHub Actions secrets
             'PAYMENT_PROVIDER_TOKEN': 'PAYMENT_TOKEN_NOT_CONFIGURED',
             'PAYMENT_CURRENCY': 'USDT',
-            'GAME_ENVIRONMENT': 'production',
-            'DEBUG_MODE': 'false',
+            'GAME_ENVIRONMENT': 'development',  // Змінимо на development для кращого дебагу
+            'DEBUG_MODE': 'true',
             'AI_FEATURES_ENABLED': 'true',
             'AI_COMPLEXITY_LEVEL': '1',
             'MULTIPLAYER_MODE': 'telegram',  // 'websocket' or 'telegram'
@@ -23,7 +23,7 @@ class EnvironmentConfig {
             'TELEGRAM_API_URL': 'https://api.telegram.org/bot',
             'GITHUB_API_URL': 'https://api.github.com',
             'GITHUB_REPO': '3kage/word-game',
-            'GITHUB_TOKEN': '',  // For GitHub API access
+            'GIT_TOKEN': '',  // For GitHub API access (renamed to avoid GITHUB_ prefix restriction)
             'SPEECH_API_ENABLED': 'true',
             'SPEECH_LANGUAGE': 'uk-UA',
             'MULTIPLAYER_ENABLED': 'true',
@@ -154,7 +154,7 @@ class EnvironmentConfig {
 
     // GitHub API configuration  
     getGitHubToken() {
-        return this.get('GITHUB_TOKEN');
+        return this.get('GIT_TOKEN');
     }
 
     getGitHubAPIURL() {

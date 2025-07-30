@@ -326,6 +326,15 @@ class TelegramMultiplayerManager {
 
     // Робота з GitHub Gist
     async createGist(roomCode, roomData) {
+        const githubToken = window.EnvironmentConfig?.getGitHubToken();
+        
+        // Якщо немає GitHub токена, використовуємо localStorage як fallback
+        if (!githubToken) {
+            console.warn('GitHub token not available, using localStorage fallback');
+            localStorage.setItem(`room_${roomCode}`, JSON.stringify(roomData));
+            return { ok: true };
+        }
+
         const gistData = {
             description: `Word Game Room: ${roomCode}`,
             public: false,
@@ -336,23 +345,66 @@ class TelegramMultiplayerManager {
             }
         };
 
-        return await fetch(`${this.githubAPI}/gists`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `token ${window.EnvironmentConfig?.getGitHubToken() || ''}`
-            },
-            body: JSON.stringify(gistData)
-        });
+        try {
+            const response = await fetch(`${this.githubAPI}/gists`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `token ${githubToken}`
+                },
+                body: JSON.stringify(gistData)
+            });
+
+            if (!response.ok) {
+                throw new Error(`GitHub API error: ${response.status}`);
+            }
+
+            return response;
+        } catch (error) {
+            console.error('GitHub Gist creation failed, using localStorage:', error);
+            localStorage.setItem(`room_${roomCode}`, JSON.stringify(roomData));
+            return { ok: true };
+        }
     }
 
     async updateGist(roomCode, roomData) {
-        // Для простоти, створюємо новий gist при кожному оновленні
-        // В продакшн варіанті краще використовувати існуючий gist
-        return await this.createGist(roomCode, roomData);
+        const githubToken = window.EnvironmentConfig?.getGitHubToken();
+        
+        // Fallback до localStorage
+        if (!githubToken) {
+            localStorage.setItem(`room_${roomCode}`, JSON.stringify(roomData));
+            return { ok: true };
+        }
+
+        try {
+            // Для простоти, створюємо новий gist при кожному оновленні
+            // В продакшн варіанті краще використовувати існуючий gist
+            return await this.createGist(roomCode, roomData);
+        } catch (error) {
+            console.error('GitHub Gist update failed, using localStorage:', error);
+            localStorage.setItem(`room_${roomCode}`, JSON.stringify(roomData));
+            return { ok: true };
+        }
     }
 
     async getRoomData(roomCode) {
+        const githubToken = window.EnvironmentConfig?.getGitHubToken();
+        
+        // Спочатку пробуємо localStorage
+        const localData = localStorage.getItem(`room_${roomCode}`);
+        if (localData) {
+            try {
+                return JSON.parse(localData);
+            } catch (error) {
+                console.error('Error parsing local room data:', error);
+            }
+        }
+
+        // Якщо немає GitHub токена, повертаємо null
+        if (!githubToken) {
+            return null;
+        }
+
         try {
             // Пошук через GitHub Search API (публічні gists)
             const searchQuery = `filename:room_${roomCode}.json`;
@@ -373,7 +425,7 @@ class TelegramMultiplayerManager {
             }
             return null;
         } catch (error) {
-            console.error('Error getting room data:', error);
+            console.error('Error getting room data from GitHub:', error);
             return null;
         }
     }

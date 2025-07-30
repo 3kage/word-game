@@ -33,13 +33,13 @@ jobs:
       if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
       env:
         TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GIT_TOKEN: ${{ secrets.GIT_TOKEN }}
       run: |
         # Create build configuration for browser
         echo "// Build-time configuration injected by GitHub Actions" > build-config.js
         echo "window.BUILD_CONFIG = {" >> build-config.js
         echo "  'TELEGRAM_BOT_TOKEN': '${{ secrets.TELEGRAM_BOT_TOKEN }}'," >> build-config.js
-        echo "  'GITHUB_TOKEN': '${{ secrets.GITHUB_TOKEN }}'," >> build-config.js
+        echo "  'GIT_TOKEN': '${{ secrets.GIT_TOKEN }}'," >> build-config.js
         echo "  'GAME_ENVIRONMENT': 'production'," >> build-config.js
         echo "  'MULTIPLAYER_MODE': 'telegram'," >> build-config.js
         echo "  'GITHUB_REPO': '${{ github.repository }}'," >> build-config.js
